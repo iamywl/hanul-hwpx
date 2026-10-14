@@ -4,6 +4,10 @@
   "description": "한컴 설치 없이 사용하는 로컬 HWP/HWPX 편집기 · 초기 시제품",
   "version": "0.1.0",
   "publisher": "hanul-local",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/iamywl/hanul-hwpx.git"
+  },
   "license": "MIT",
   "engines": {
     "vscode": "^1.95.0"
