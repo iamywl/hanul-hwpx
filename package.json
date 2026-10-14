@@ -18,6 +18,10 @@
     "editor"
   ],
   "main": "./dist/extension.js",
+  "bin": {
+    "hanul": "./dist/cli.mjs",
+    "hanul-mcp": "./dist/mcp.mjs"
+  },
   "contributes": {
     "customEditors": [
       {

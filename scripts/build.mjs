@@ -7,4 +7,7 @@ await mkdir('artifacts', { recursive: true });
 await build({ entryPoints: ['src/extension.ts'], bundle: true, platform: 'node', format: 'cjs', external: ['vscode'], outfile: 'dist/extension.js', sourcemap: true });
 await build({ entryPoints: ['src/storage.ts'], bundle: true, platform: 'node', format: 'esm', outfile: 'dist/storage.mjs' });
 await build({ entryPoints: ['src/html.ts'], bundle: true, platform: 'node', format: 'esm', outfile: 'dist/html.mjs' });
-console.log('한울 확장 빌드 완료');
+await build({ entryPoints: ['src/core/document.ts'], bundle: true, platform: 'node', format: 'esm', outfile: 'dist/core.mjs' });
+await build({ entryPoints: ['src/mcp/server.ts'], bundle: true, platform: 'node', format: 'esm', outfile: 'dist/mcp.mjs' });
+await build({ entryPoints: ['src/cli.ts'], bundle: true, platform: 'node', format: 'esm', outfile: 'dist/cli.mjs' });
+console.log('한울 코어 엔진, MCP 서버, CLI 및 확장 빌드 완료');
