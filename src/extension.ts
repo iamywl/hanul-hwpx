@@ -4,7 +4,6 @@ import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { editorHtml } from './html';
 import { atomicSave, digest, formatOf, validateBytes, type Format } from './storage';
-import { parseDocumentBuffer } from './core/document';
 
 const viewType = 'hanul.editor';
 class HanulDocument implements vscode.CustomDocument {
@@ -48,24 +47,7 @@ class HanulProvider implements vscode.CustomEditorProvider<HanulDocument> {
           message.error ? pending.reject(Error(String(message.error))) : pending.resolve(message.result);
         } else if (message.type === 'ready') {
           document.ready = true;
-          try {
-            if (document.bytes.length > 0) {
-              const doc = parseDocumentBuffer(Buffer.from(document.bytes));
-              void panel.webview.postMessage({
-                type: 'renderDocument',
-                data: {
-                  format: doc.format,
-                  version: doc.version,
-                  paragraphs: doc.paragraphs,
-                  tables: doc.tables,
-                  fullText: doc.fullText,
-                  isDistribution: doc.fullText.includes('배포용') || (doc.format === 'hwp' && doc.fullText.includes('중소벤처기업부')),
-                },
-              });
-            }
-          } catch (err: any) {
-            void vscode.window.showErrorMessage(`한울 문서 파싱 실패: ${err.message}`);
-          }
+          await this.request(document, 'load', { bytes: Array.from(document.bytes), name: basename(document.uri.path), restored: document.restored });
           if (document.restored) { document.version++; this.emitter.fire({ document }); }
         } else if (message.type === 'changed' && Number.isSafeInteger(message.version)) {
           document.version = message.version;

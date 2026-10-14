@@ -51,14 +51,17 @@ flowchart TD
 
 바이너리 전체를 처음부터 무작정 디컴파일하는 것은 비효율적입니다. 다음 3단계 실용 전략을 의무적으로 적용합니다:
 
-### 1. 공식 개방 스펙을 그라운드 트루스(Ground Truth)로 제공 (RAG 지식베이스 주입)
-- 과거 배포된 **HWP 5.0 바이너리 파일 포맷 가이드**와 개방형 표준인 **HWPX(KS X 6101 / OWPML) 표준 XML 명세서**를 에이전트의 지식베이스로 먼저 주입하여 기본 파서와 골격을 빠르게 생성합니다.
+### 1. 공식 개방 스펙 및 실물 환경을 그라운드 트루스(Ground Truth)로 제공
+- 과거 배포된 **HWP 5.0 바이너리 파일 포맷 가이드**와 개방형 표준인 **HWPX(KS X 6101 / OWPML) 표준 XML 명세서**를 기본 지식베이스로 삼습니다.
+- **실물 렌더링 그라운드 트루스(Visual Ground Truth)**: 개발자 머신(macOS)에 설치된 공식 **한컴오피스 한글 Viewer**의 렌더링 화면과 `tests/fixtures/` 내 실제 공문서/공모전 HWP 파일들을 정답지(Golden Reference)로 삼아 레이아웃 왜곡, 표 테두리, 이미지 배치를 교차 검증합니다.
+- **바이너리 바이너리 그라운드 트루스(Binary Ground Truth)**: `tests/fixtures/` 내 실무 한글 파일들의 OLE 스트림(`DocInfo`, `BodyText`, `ViewText`, `BinData`)을 바이트 단위로 검증합니다.
 
 ### 2. HWPX 우선 분석 및 표준 AST 모델 선(先)구축
 - 바이너리(CFB) 파싱보다 ZIP 압축 기반의 XML 구조인 HWPX를 먼저 파싱하여 현대적인 **문서 데이터 모델(JSON AST)**을 먼저 확립합니다. 이 AST를 기준으로 HWP 바이너리 역공학 결과를 매핑합니다.
 
-### 3. 미공개 레코드만 타깃 역공학 (Targeted RE)
-- 최신 한컴 버전에서 추가된 신규 태그, 확장 컨트롤, 암호화/보안 처리 로직, 미문서화된 레거시 속성처럼 **공식 문서에 누락된 영역에만 리버스 엔지니어링 에이전트(Ghidra + Diff Tracer)를 집중 투입**합니다.
+### 3. 미공개 레코드 및 배포용 문서 타깃 역공학 (Targeted RE)
+- **배포용 문서(`ViewText`) 복호화**: `BodyText`가 더미 안내문으로 잠긴 배포용 문서는 `ViewText/Section*` 내 `HWPTAG_DISTRIBUTE_DOC_DATA (0x1c)`의 시드 기반 난수 생성 및 AES-128-ECB 복호화 파이프라인을 거쳐 원본 표/서식을 100% 복원하고 편집 가능 상태로 승격(Unlock)합니다.
+- 최신 한컴 버전에서 추가된 신규 태그, 확장 컨트롤, 암호화/보안 처리 로직, 미문서화된 레거시 속성에 리버스 엔지니어링 에이전트를 집중 투입합니다.
 
 ---
 
@@ -73,16 +76,21 @@ flowchart TD
 
 ## ⚖️ 에이전트 공통 절대 원칙 (Prime Directives)
 
-1. **무단 직접 개발 금지 (Specification First)**:
+1. **에디터 본질 사수 헌장 (WYSIWYG Editor Integrity - 절대 뷰어로 후퇴 금지)**:
+   - 한울은 단순한 텍스트 뷰어가 아닌 **"한컴 설치 없이 브라우저/VS Code에서 동작하는 완전한 위지윅(WYSIWYG) 편집기"**입니다.
+   - 툴바, 폰트/글자 서식, 표 생성/수정, 타이핑 커서, 실행 취소/다시 실행, 단축키 저장이 온전히 작동해야 하며, 임의로 읽기 전용 단순 뷰어로 다운그레이드하는 행위는 엄격히 금지됩니다.
+2. **무단 직접 개발 금지 (Specification First)**:
    - 기획 및 REA 실증 없이 코드를 추측하여 작성하지 않습니다.
-2. **완전한 크로스 플랫폼 보장 (Zero OS Lock-in)**:
+3. **완전한 크로스 플랫폼 보장 (Zero OS Lock-in)**:
    - 윈도우 전용 API(OLE/COM, Win32 DLL, 레지스트리 등) 의존 금지. macOS, Linux, Windows 100% 동일 동작.
-3. **증거 기반 역공학 및 클린룸 원칙 (Clean Room Reverse Engineering)**:
+4. **증거 기반 역공학 및 클린룸 원칙 (Clean Room Reverse Engineering)**:
    - 한컴의 독점 소스코드를 무단 복제하지 않으며, [REA](https://github.com/morluto/rea)를 통한 관찰과 실증에 기반한 독립 재구현을 준수합니다.
-4. **MCP 1급 시민 원칙 (MCP-First)**:
+5. **MCP 1급 시민 원칙 (MCP-First)**:
    - 모든 엔진 기능은 AI 에이전트가 호출할 수 있는 표준 MCP 도구로 즉시 노출되어야 합니다.
-5. **무손실 보존 및 안전 장치 (Fail-Safe Round-trip)**:
+6. **무손실 보존 및 안전 장치 (Fail-Safe Round-trip)**:
    - 문서를 수정 후 저장할 때 미편집 영역의 바이트와 구조는 100% 보존되어야 합니다.
+7. **실제 문서 전수 호환성 보장 (Fixtures Ground Truth)**:
+   - `tests/fixtures/`에 저장된 실무 공고문, 공모전 신청서, 배포용 문서 등 모든 한글 파일이 에디터에서 왜곡 없이 열리고 저장될 수 있어야 합니다.
 
 ---
 

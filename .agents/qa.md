@@ -8,15 +8,18 @@
 
 ## 🎯 핵심 검증 미션
 
-1. **한컴오피스 렌더링 & 데이터 일치성 검증 (Visual & Data Fidelity)**
-   - 한울로 파싱/렌더링/변환한 결과가 실제 한컴오피스 및 공식 한컴 뷰어와 데이터/서식 측면에서 일치하는지 비교 검증.
-2. **라운드트립 무손실 보존 검증 (Round-trip Byte Integrity)**
+1. **실물 한컴 뷰어 렌더링 & 시각적 정합성 검증 (Visual Ground Truth Fidelity)**
+   - 개발자 머신(macOS)의 공식 **한컴오피스 한글 Viewer** 렌더링 결과와 Hanul 에디터의 웹뷰 렌더링 화면을 시각적으로 1:1 비교.
+   - 표 열 너비, 테두리, 셀 병합, 글머리 기호, 폰트 비율, 이미지 위치 왜곡 여부 집중 검증.
+2. **`tests/fixtures/` 실무 문서 전수 호환성 검증 (Fixture Test Matrix)**
+   - `tests/fixtures/`에 등록된 모든 실제 한글 문서(공모전 신청서, 공고문, 예비창업패키지, 배포용 문서 등)가 에디터에서 에러 없이 로드되는지 전수 테스트.
+3. **위지윅(WYSIWYG) 편집 및 저장 기능 무결성 검증 (Editor Integrity)**
+   - 단순 뷰어가 아닌 실제 편집기(타이핑, 폰트/서식 적용, 표 셀 편집, 행/열 추가, 실행 취소/다시 실행, `Cmd+S` 저장 및 재열기)가 100% 정상 작동하는지 브라우저/VS Code 통합 테스트.
+4. **배포용 문서 자동 복호화 및 승격 검증 (Distribution Document Decryption)**
+   - `ViewText/Section*` 복호화를 통해 배포용 문서가 열렸을 때 더미 안내문이 아닌 실제 본문 및 표가 온전히 복구되어 편집 가능한 상태가 되는지 검증.
+5. **라운드트립 무손실 보존 검증 (Round-trip Byte Integrity)**
    - 문서를 열어서 특정 부분(예: 1개 셀의 텍스트)만 수정한 뒤 저장했을 때, 수정되지 않은 나머지 모든 바이너리 스트림, 메타데이터, 개체 데이터가 100% 보존되는지 검사.
-3. **크로스 플랫폼 매트릭스 테스트 (OS Matrix Verification)**
-   - macOS (Apple Silicon / Intel), Linux (Ubuntu LTS x64 / ARM64), Windows 환경에서 동일한 테스트 스위트 통과 여부 검증.
-4. **퍼징 및 예외 안정성 테스트 (Fuzzing & Robustness)**
-   - 손상된 바이트, 조작된 레코드 헤더, 비정상적 파일 크기, 암호화된 파일이 입력되었을 때 프로세스가 비정상 종료(Crash)되지 않고 안전하게 처리(Fail-closed)되는지 검증.
-5. **MCP 연동 및 토큰 효율성 검증 (MCP Fidelity & Efficiency)**
+6. **MCP 연동 및 토큰 효율성 검증 (MCP Fidelity & Efficiency)**
    - AI 에이전트(Claude, Cursor 등)가 MCP 도구를 호출했을 때 반환되는 JSON 데이터가 스키마를 만족하는지, 불필요한 토큰 낭비 없이 핵심 정보를 명확히 전달하는지 확인.
 
 ---

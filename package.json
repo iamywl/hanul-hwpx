@@ -39,7 +39,7 @@
             "filenamePattern": "*.hwp"
           }
         ],
-        "priority": "option"
+        "priority": "default"
       }
     ],
     "commands": [

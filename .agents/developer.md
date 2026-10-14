@@ -8,20 +8,33 @@
 
 ## 🎯 핵심 개발 원칙 (Core Engineering Principles)
 
-### 1. 완전한 크로스 플랫폼 (Zero OS-specific Native Dependencies)
+### 1. 에디터 본질 사수 (WYSIWYG Editor Preservation)
+- 한울의 프론트엔드는 단순 텍스트 뷰어가 아닌 **상호작용 가능한 완전한 위지윅(WYSIWYG) 편집기**(`vendor/studio`)입니다.
+- 임의로 편집 기능을 제거하고 읽기 전용 HTML로 대체하는 행위는 엄격히 금지됩니다.
+- 본문 타이핑, 폰트/스타일 변경, 표 조작, 실행 취소/다시 실행, `Cmd+S` 저장이 VS Code 웹뷰와 양방향 IPC로 온전히 연동되어야 합니다.
+
+### 2. 배포용 문서(`ViewText`) 자동 복호화 및 잠금 해제 파이프라인
+- HWP 5.x 배포용 문서(`flags.distribution === true` 또는 `ViewText` 존재)는 `ViewText/Section*`의 첫 256바이트 시드로부터 MSVC LCG 난수 배열을 생성하여 AES-128 키를 도출하고, AES-128-ECB 복호화 및 zlib inflate를 수행합니다.
+- 복호화된 완전한 레코드 스트림(`HWPTAG_SECTION_DEF`, `HWPTAG_TABLE`, `HWPTAG_PARA_TEXT` 등)을 바탕으로 배포용 문서를 온전한 일반 문서로 승격(Unlock)하여 에디터에 로드합니다.
+
+### 3. 표(Table) 및 이미지(BinData) 무손실 렌더링
+- HWP 바이너리 내 `TABLE` (77) 및 `LIST_HEADER` (72) 레코드의 행/열 인덱스 및 너비를 정확히 계산하여 표 레이아웃이 찌그러지지 않도록 보장합니다.
+- HWP 내의 `BinData/BINxxxx.bmp|jpg|png` 스트림을 메모리 데이터 URL 또는 HWPX 바이너리 패키지로 전달하여 `[Image: BIN0010]` 같은 텍스트 플레이스홀더 대신 실제 이미지가 렌더링되도록 합니다.
+
+### 4. 완전한 크로스 플랫폼 (Zero OS-specific Native Dependencies)
 - macOS, Linux, Windows 어디서나 추가 네이티브 컴파일 오류 없이 동작해야 합니다.
 - 윈도우 레지스트리, OLE/COM 자동화 객체, Win32 전용 시스템 콜 사용 절대 금지.
 - 파일 경로는 항상 POSIX/Cross-platform 표준화 유틸리티를 사용합니다.
 
-### 2. 증거 기반 클린룸 구현 (Evidence-based Clean Room)
-- 한컴의 독점 소스코드를 복사하지 않으며, REA 분석을 통해 밝혀진 입력/출력 인터페이스 규격과 데이터 바이트 레이아웃을 기반으로 순수 독립 코드를 작성합니다.
+### 5. 증거 기반 클린룸 구현 (Evidence-based Clean Room)
+- 한컴의 독점 소스코드를 복사하지 않으며, REA 분석 및 검증된 오픈 역공학 명세를 기반으로 순수 독립 코드를 작성합니다.
 - 복잡한 바이너리 파서는 바이너리 청크의 오프셋과 길이를 엄격히 검사하여 버퍼 오버플로우나 Out-of-bounds 예외를 원천 차단합니다.
 
-### 3. Fail-Closed & Result 패턴
+### 6. Fail-Closed & Result 패턴
 - 문서 파싱 중 예상치 못한 태그나 손상된 스트림을 만났을 때 시스템이 크래시되지 않고, 구조화된 에러 객체(`Result<T, HanulError>`)를 반환합니다.
 - 알 수 없는 레코드가 있더라도 사용자가 수정하지 않은 영역은 바이트 단위로 그대로 보존(Round-trip Preservation)합니다.
 
-### 4. MCP 서버 표준 규격 준수
+### 7. MCP 서버 표준 규격 준수
 - MCP 프로토콜은 표준 `stdio` (JSON-RPC) 전송 방식을 기본으로 채택합니다.
 - 모든 도구(Tool)의 입출력은 JSON Schema 규격을 100% 준수해야 하며, AI 에이전트가 이해하기 쉬운 명확하고 압축적인 응답(Token-efficient)을 반환해야 합니다.
 

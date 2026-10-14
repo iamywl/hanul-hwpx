@@ -8,15 +8,18 @@
 
 ## 🎯 핵심 미션
 
-1. **공식 개방 스펙 그라운드 트루스(Ground Truth) RAG 지식베이스 주입**
-   - HWP 5.0 바이너리 파일 포맷 가이드 및 HWPX (KS X 6101 / OWPML) 표준 XML 문서를 프로젝트 지식베이스로 구조화하여 개발/RE 에이전트에 공급.
-2. **HWPX 우선 분석 기반 표준 데이터 모델(AST) 선행 설계**
+1. **실물 환경 & 공식 개방 스펙 그라운드 트루스(Ground Truth) 공급**
+   - 개발자 환경(macOS)에 설치된 공식 **한컴오피스 한글 Viewer**의 렌더링 화면과 `tests/fixtures/` 내 실무 문서(공모전 신청서, 공고문, 예비창업패키지 등)를 최우선 시각적/바이너리 기준(Ground Truth)으로 설정.
+   - HWP 5.0 바이너리 파일 포맷 가이드 및 HWPX (KS X 6101 / OWPML) 표준 XML 명세 지식베이스 공급.
+2. **에디터 본질 사수 (WYSIWYG Editor Spec First)**
+   - 한울은 뷰어가 아닌 **"완전한 위지윅 편집기"**이므로, 툴바, 폰트/스타일, 표 편집, 타이핑, 저장 단축키(Cmd+S)가 100% 작동하는 편집기 UX/UI 스펙을 절대 타협하지 않음.
+3. **배포용 문서(Distribution Doc) 복호화 및 승격 기획**
+   - `ViewText/Section*` 내 `HWPTAG_DISTRIBUTE_DOC_DATA (0x1c)`의 시드 기반 PRNG 및 AES-128-ECB 복호화 파이프라인을 기획하여, 배포용 문서도 모든 표와 서식을 온전히 살려 편집 가능한 일반 문서로 자동 승격(Unlock)하도록 설계.
+4. **표(Table) 및 이미지(BinData) 무손실 레이아웃 기획**
+   - 실무 공모전 문서의 복잡한 표(병합 셀, colspan, rowspan, 너비, 테두리)와 `BinData/` 임베디드 이미지가 깨지지 않고 에디터에 자연스럽게 렌더링되도록 스펙 정의.
+5. **HWPX 우선 분석 기반 표준 데이터 모델(AST) 선행 설계**
    - XML 기반 HWPX를 우선 파싱하는 유저 시나리오를 수립하고, 이를 토대로 ProseMirror/TipTap 호환 JSON AST 명세를 우선 도출.
-3. **미공개 레코드 타깃 역공학 지침(Targeted RE Request) 발주**
-   - 공식 문서에 누락된 암호화/압축 방식, 최신 한컴 신규 컨트롤, 미문서화 비트 플래그에 대해 5대 RE 에이전트([`re-decompile`](re-decompile.md), [`re-diff-tracer`](re-diff-tracer.md), [`re-struct`](re-struct.md), [`re-parser-synth`](re-parser-synth.md), [`re-ast-mapper`](re-ast-mapper.md))에 구체적 조사 요청서 작성.
-4. **과거 레거시 포맷(HWP 97 / 3.0) 호환성 및 보존 기획**
-   - DOS/초기 Windows 레거시 한컴 포맷의 시그니처 감지, 조합형/완성형 한글 변환 규칙, HWPX 현대화 변환 명세 수립.
-5. **MCP (Model Context Protocol) 도구 명세 설계**
+6. **MCP (Model Context Protocol) 도구 명세 설계**
    - AI 에이전트가 한글 문서를 제어하기 위한 표준화된 Tool Contract(이름, 설명, 매개변수 JSON Schema, 반환 포맷) 정의.
 
 ---
