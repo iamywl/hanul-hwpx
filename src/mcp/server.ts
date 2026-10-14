@@ -12,6 +12,8 @@ import { openDocument, parseDocumentBuffer } from '../core/document.js';
 import { CompoundFile } from '../core/cfbf.js';
 import { parseFileHeader } from '../core/hwp-record.js';
 import { validateBytes } from '../storage.js';
+import { HwpxDocumentBuilder, TableDef } from '../core/hwpx-builder.js';
+import { compileMarkdownToHwpx } from '../core/markdown-compiler.js';
 
 interface JsonRpcRequest {
   jsonrpc: '2.0';
@@ -226,6 +228,117 @@ const TOOLS = [
         },
       },
       required: ['outputPath', 'title', 'paragraphs'],
+    },
+  },
+  {
+    name: 'hanul_markdown_to_hwpx',
+    description: '마크다운(GFM) 파일 또는 문자열을 표, 정렬, 페이지 구분, 이미지 증빙이 완벽히 포함된 고품질 HWPX 문서로 직접 컴파일합니다.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        inputPath: {
+          type: 'string',
+          description: '컴파일할 마크다운 파일의 경로 (markdownContent가 없을 때 필수)',
+        },
+        markdownContent: {
+          type: 'string',
+          description: '컴파일할 마크다운 문자열 내용 (inputPath가 없을 때 필수)',
+        },
+        outputPath: {
+          type: 'string',
+          description: '생성할 HWPX 파일의 저장 경로',
+        },
+        baseDir: {
+          type: 'string',
+          description: '이미지 상대경로 기준 디렉토리 (기본값: inputPath 또는 outputPath 디렉토리)',
+        },
+      },
+      required: ['outputPath'],
+    },
+  },
+  {
+    name: 'hanul_create_styled_document',
+    description: '컬럼별 너비(colWidths), 헤더 음영, 셀 병합(colSpan/rowSpan), 제목, 문단, 스크린샷 이미지 증빙을 자유롭게 조합하여 전문 관공서/사업계획서/외주용역 양식 HWPX 문서를 생성합니다.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        outputPath: {
+          type: 'string',
+          description: '생성할 HWPX 파일의 저장 경로',
+        },
+        title: {
+          type: 'string',
+          description: '문서 최상단 대제목',
+        },
+        subtitle: {
+          type: 'string',
+          description: '부제목 (선택)',
+        },
+        sections: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              heading: { type: 'string', description: '섹션 제목' },
+              level: { type: 'integer', enum: [1, 2, 3], description: '헤딩 레벨 (1, 2, 3)' },
+              paragraphs: {
+                type: 'array',
+                items: { type: 'string' },
+                description: '섹션 본문 문단들',
+              },
+              table: {
+                type: 'object',
+                properties: {
+                  colWidths: {
+                    type: 'array',
+                    items: { type: 'integer' },
+                    description: '컬럼별 너비 목록 (합계 42520)',
+                  },
+                  rows: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        cells: {
+                          type: 'array',
+                          items: {
+                            type: 'object',
+                            properties: {
+                              text: { type: 'string' },
+                              colSpan: { type: 'integer' },
+                              rowSpan: { type: 'integer' },
+                              header: { type: 'boolean' },
+                              align: { type: 'string', enum: ['LEFT', 'CENTER', 'RIGHT', 'JUSTIFY'] },
+                              bold: { type: 'boolean' },
+                            },
+                            required: ['text'],
+                          },
+                        },
+                      },
+                      required: ['cells'],
+                    },
+                  },
+                },
+                required: ['colWidths', 'rows'],
+              },
+              images: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    imagePath: { type: 'string' },
+                    caption: { type: 'string' },
+                  },
+                  required: ['imagePath'],
+                },
+              },
+              pageBreak: { type: 'boolean', description: '섹션 종료 후 페이지 나누기 여부' },
+            },
+          },
+          description: '문서를 구성하는 구조적 섹션 목록',
+        },
+      },
+      required: ['outputPath', 'title'],
     },
   },
 ];
@@ -575,85 +688,137 @@ export class HanulMcpServer {
         const paragraphs = Array.isArray(args.paragraphs) ? args.paragraphs : [];
         const tables = Array.isArray(args.tables) ? args.tables : [];
 
-        // 템플릿 로드
-        const templatePath = path.resolve('templates/report.hwpx');
-        const templateBuf = fs.readFileSync(templatePath);
-        const unzipped = unzipSync(templateBuf);
+        const builder = new HwpxDocumentBuilder();
+        builder.addTitle(title);
 
-        // 새로운 section0.xml 생성
-        let secXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n`;
-        secXml += `<hs:sec xmlns:hp="http://www.hancom.co.kr/hwpml/2011/paragraph" xmlns:hs="http://www.hancom.co.kr/hwpml/2011/section">\n`;
-
-        // 1. 문서 제목
-        secXml += `  <hp:p id="0" paraPrIDRef="0" styleIDRef="0">\n`;
-        secXml += `    <hp:run charPrIDRef="8"><hp:t>${escapeXml(title)}</hp:t></hp:run>\n`;
-        secXml += `  </hp:p>\n`;
-
-        // 2. 본문 문단들
-        let pId = 1;
         for (const p of paragraphs) {
-          secXml += `  <hp:p id="${pId++}" paraPrIDRef="0" styleIDRef="0">\n`;
-          secXml += `    <hp:run charPrIDRef="9"><hp:t>${escapeXml(p)}</hp:t></hp:run>\n`;
-          secXml += `  </hp:p>\n`;
+          builder.addParagraph(p);
         }
 
-        // 3. 표들
-        let tblId = 0;
         for (const tbl of tables) {
           const rows = tbl.rows || [];
           if (rows.length === 0) continue;
-          const rowCount = rows.length;
           const colCount = Math.max(...rows.map((r: string[]) => r.length));
+          const totalWidth = 42520;
+          const colWidth = Math.floor(totalWidth / colCount);
+          const colWidths = Array(colCount).fill(colWidth);
+          colWidths[colCount - 1] += totalWidth - colWidth * colCount;
 
-          secXml += `  <hp:p id="${pId++}" paraPrIDRef="0" styleIDRef="0">\n`;
-          secXml += `    <hp:run charPrIDRef="9">\n`;
-          secXml += `      <hp:tbl id="${tblId++}" rowCnt="${rowCount}" colCnt="${colCount}" cellSpacing="0">\n`;
-
-          for (let r = 0; r < rowCount; r++) {
-            secXml += `        <hp:tr>\n`;
-            for (let c = 0; c < colCount; c++) {
-              const cellText = rows[r]?.[c] || '';
-              secXml += `          <hp:tc>\n`;
-              secXml += `            <hp:subList>\n`;
-              secXml += `              <hp:p id="${pId++}" paraPrIDRef="0" styleIDRef="0">\n`;
-              secXml += `                <hp:run charPrIDRef="9"><hp:t>${escapeXml(cellText)}</hp:t></hp:run>\n`;
-              secXml += `              </hp:p>\n`;
-              secXml += `            </hp:subList>\n`;
-              secXml += `            <hp:cellAddr colAddr="${c}" rowAddr="${r}"/>\n`;
-              secXml += `          </hp:tc>\n`;
-            }
-            secXml += `        </hp:tr>\n`;
-          }
-
-          secXml += `      </hp:tbl>\n`;
-          secXml += `    </hp:run>\n`;
-          secXml += `  </hp:p>\n`;
+          builder.addTable({
+            colWidths,
+            rows: rows.map((r: string[], rIdx: number) => ({
+              cells: r.map((c: string) => ({
+                text: c,
+                header: rIdx === 0,
+                align: rIdx === 0 ? 'CENTER' : 'LEFT',
+                bold: rIdx === 0,
+              })),
+            })),
+          });
         }
 
-        secXml += `</hs:sec>`;
-
-        unzipped['Contents/section0.xml'] = strToU8(secXml);
-        const zipped = zipSync(unzipped);
-
-        validateBytes(new Uint8Array(zipped), 'hwpx');
-        const parentDir = path.dirname(outputPath);
-        if (!fs.existsSync(parentDir)) {
-          fs.mkdirSync(parentDir, { recursive: true });
-        }
-        fs.writeFileSync(outputPath, Buffer.from(zipped));
+        builder.saveToFile(outputPath);
+        const stats = fs.statSync(outputPath);
 
         return this.sendResult(id, {
           content: [
             {
               type: 'text',
-              text: `표준 HWPX 문서 생성 완료: ${outputPath} (${zipped.length} bytes)`,
+              text: `표준 HWPX 문서 생성 완료: ${outputPath} (${stats.size} bytes)`,
             },
           ],
           success: true,
           outputPath,
-          fileSize: zipped.length,
+          fileSize: stats.size,
           paragraphsCount: paragraphs.length,
           tablesCount: tables.length,
+        });
+      }
+
+      if (name === 'hanul_markdown_to_hwpx') {
+        const outputPath = path.resolve(args.outputPath);
+        let markdown = '';
+
+        if (args.inputPath) {
+          const inPath = path.resolve(args.inputPath);
+          markdown = fs.readFileSync(inPath, 'utf8');
+        } else if (args.markdownContent) {
+          markdown = String(args.markdownContent);
+        } else {
+          return this.sendError(id, -32602, 'inputPath 또는 markdownContent 중 하나는 필수입니다.');
+        }
+
+        const baseDir = args.baseDir
+          ? path.resolve(args.baseDir)
+          : args.inputPath
+          ? path.dirname(path.resolve(args.inputPath))
+          : path.dirname(outputPath);
+
+        compileMarkdownToHwpx(markdown, outputPath, { baseDir });
+        const stats = fs.statSync(outputPath);
+
+        return this.sendResult(id, {
+          content: [
+            {
+              type: 'text',
+              text: `마크다운 -> HWPX 컴파일 완료: ${outputPath} (${stats.size} bytes)`,
+            },
+          ],
+          success: true,
+          outputPath,
+          fileSize: stats.size,
+        });
+      }
+
+      if (name === 'hanul_create_styled_document') {
+        const outputPath = path.resolve(args.outputPath);
+        const title = String(args.title || '새 문서');
+        const subtitle = args.subtitle ? String(args.subtitle) : undefined;
+        const sections = Array.isArray(args.sections) ? args.sections : [];
+
+        const builder = new HwpxDocumentBuilder();
+        builder.addTitle(title, subtitle);
+
+        for (const sec of sections) {
+          if (sec.heading) {
+            builder.addHeading(sec.heading, sec.level || 1);
+          }
+
+          if (Array.isArray(sec.paragraphs)) {
+            for (const p of sec.paragraphs) {
+              builder.addParagraph(p);
+            }
+          }
+
+          if (sec.table && Array.isArray(sec.table.rows)) {
+            builder.addTable(sec.table);
+          }
+
+          if (Array.isArray(sec.images)) {
+            for (const img of sec.images) {
+              builder.addImage(img);
+            }
+          }
+
+          if (sec.pageBreak) {
+            builder.addPageBreak();
+          }
+        }
+
+        builder.saveToFile(outputPath);
+        const stats = fs.statSync(outputPath);
+
+        return this.sendResult(id, {
+          content: [
+            {
+              type: 'text',
+              text: `서식화된 HWPX 문서 생성 완료: ${outputPath} (${stats.size} bytes)`,
+            },
+          ],
+          success: true,
+          outputPath,
+          fileSize: stats.size,
+          sectionsCount: sections.length,
         });
       }
 

@@ -8,6 +8,8 @@ await build({ entryPoints: ['src/extension.ts'], bundle: true, platform: 'node',
 await build({ entryPoints: ['src/storage.ts'], bundle: true, platform: 'node', format: 'esm', outfile: 'dist/storage.mjs' });
 await build({ entryPoints: ['src/html.ts'], bundle: true, platform: 'node', format: 'esm', outfile: 'dist/html.mjs' });
 await build({ entryPoints: ['src/core/document.ts'], bundle: true, platform: 'node', format: 'esm', outfile: 'dist/core.mjs' });
+await build({ entryPoints: ['src/core/hwpx-builder.ts'], bundle: true, platform: 'node', format: 'esm', outfile: 'dist/hwpx-builder.mjs' });
+await build({ entryPoints: ['src/core/markdown-compiler.ts'], bundle: true, platform: 'node', format: 'esm', outfile: 'dist/markdown-compiler.mjs' });
 await build({ entryPoints: ['src/mcp/server.ts'], bundle: true, platform: 'node', format: 'esm', outfile: 'dist/mcp.mjs' });
 await build({ entryPoints: ['src/cli.ts'], bundle: true, platform: 'node', format: 'esm', outfile: 'dist/cli.mjs' });
 console.log('한울 코어 엔진, MCP 서버, CLI 및 확장 빌드 완료');

@@ -49,14 +49,14 @@ function callMcp(requests) {
   });
 }
 
-test('MCP: tools/list는 8개 도구를 모두 제공해야 합니다', async () => {
+test('MCP: tools/list는 10개 도구를 모두 제공해야 합니다', async () => {
   const responses = await callMcp([
     { jsonrpc: '2.0', id: 1, method: 'tools/list' },
   ]);
 
   assert.equal(responses.length, 1);
   const tools = responses[0].result.tools;
-  assert.equal(tools.length, 8);
+  assert.equal(tools.length, 10);
   const toolNames = tools.map((t) => t.name);
   assert.ok(toolNames.includes('hanul_read_document'));
   assert.ok(toolNames.includes('hanul_inspect_tables'));
@@ -66,6 +66,8 @@ test('MCP: tools/list는 8개 도구를 모두 제공해야 합니다', async ()
   assert.ok(toolNames.includes('hanul_unlock_document'));
   assert.ok(toolNames.includes('hanul_convert_document'));
   assert.ok(toolNames.includes('hanul_create_document'));
+  assert.ok(toolNames.includes('hanul_markdown_to_hwpx'));
+  assert.ok(toolNames.includes('hanul_create_styled_document'));
 });
 
 test('MCP: hanul_read_document로 본문 및 마크다운 추출 검증', async () => {
@@ -281,4 +283,87 @@ test('MCP: hanul_create_document로 새 HWPX 문서 생성 및 검증', async ()
   assert.equal(doc.tables.length, 1);
   assert.equal(doc.tables[0].rows, 3);
   assert.equal(doc.tables[0].cols, 3);
+});
+
+test('MCP: hanul_markdown_to_hwpx로 마크다운을 HWPX로 컴파일 검증', async () => {
+  const outHwpx = path.resolve('dist/test_md_compiled.hwpx');
+  if (fs.existsSync(outHwpx)) fs.unlinkSync(outHwpx);
+
+  const md = `# 과업지시서\n\n## 1. 개요\n본 과업은 플랫폼 개발입니다.\n\n| 구분 | 항목 | 내용 |\n| :--- | :---: | ---: |\n| 1 | 프론트엔드 | Next.js 15 |\n| 2 | 백엔드 | NestJS 11 |\n`;
+
+  const responses = await callMcp([
+    {
+      jsonrpc: '2.0',
+      id: 9,
+      method: 'tools/call',
+      params: {
+        name: 'hanul_markdown_to_hwpx',
+        arguments: {
+          markdownContent: md,
+          outputPath: outHwpx,
+        },
+      },
+    },
+  ]);
+
+  assert.equal(responses.length, 1);
+  const res = responses[0].result;
+  assert.equal(res.success, true);
+  assert.ok(fs.existsSync(outHwpx));
+
+  const doc = openDocument(outHwpx);
+  assert.equal(doc.format, 'hwpx');
+  assert.ok(doc.fullText.includes('과업지시서'));
+  assert.ok(doc.fullText.includes('Next.js 15'));
+  assert.equal(doc.tables.length, 1);
+  assert.equal(doc.tables[0].rows, 3);
+});
+
+test('MCP: hanul_create_styled_document로 고급 서식 HWPX 생성 검증', async () => {
+  const outHwpx = path.resolve('dist/test_styled.hwpx');
+  if (fs.existsSync(outHwpx)) fs.unlinkSync(outHwpx);
+
+  const responses = await callMcp([
+    {
+      jsonrpc: '2.0',
+      id: 10,
+      method: 'tools/call',
+      params: {
+        name: 'hanul_create_styled_document',
+        arguments: {
+          outputPath: outHwpx,
+          title: '창업동아리 활동계획서',
+          subtitle: 'StudyBridge 플랫폼 개발 계획',
+          sections: [
+            {
+              heading: '1. 동아리 개요',
+              level: 1,
+              paragraphs: ['동아리 소개 문단입니다.'],
+              table: {
+                colWidths: [10000, 32520],
+                rows: [
+                  {
+                    cells: [
+                      { text: '동아리명', header: true },
+                      { text: 'StudyBridge', align: 'LEFT' },
+                    ],
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      },
+    },
+  ]);
+
+  assert.equal(responses.length, 1);
+  const res = responses[0].result;
+  assert.equal(res.success, true);
+  assert.ok(fs.existsSync(outHwpx));
+
+  const doc = openDocument(outHwpx);
+  assert.equal(doc.format, 'hwpx');
+  assert.ok(doc.fullText.includes('창업동아리 활동계획서'));
+  assert.ok(doc.fullText.includes('StudyBridge'));
 });
