@@ -170,13 +170,21 @@ hanul-hwpx/
 
 ---
 
-## 🤝 프로젝트 참여 & 기여
+## 🤝 프로젝트 참여 & 기여 (Contributing)
 
 한울은 **한글 문서의 자유로운 사용과 플랫폼 독립**을 꿈꾸는 모든 분들의 기여를 환영합니다!
-- 리버스 엔지니어링 및 바이너리 분석에 관심 있는 분
-- Rust / TypeScript / C++ / WebAssembly 크로스 플랫폼 엔진 개발자
-- MCP 및 AI 에이전트 워크플로우를 설계하고 테스트할 분
-- 다양한 HWP/HWPX 샘플 문서 검증 및 버그 제보
+
+> [!IMPORTANT]
+> **🪟 Windows 플랫폼을 함께 책임져 주실 코어 컨트리뷰터(Core Contributor)를 모십니다!**  
+> 현재 메인 리드는 **macOS 환경에서 코어 엔진과 데스크톱 개발을 주도**하고 있습니다. 그러나 한컴오피스의 공식 표준 동작을 확인하고 비교 검증하는 데는 **실제 Windows 환경**이 필수적입니다.  
+> - Windows PC에서 실제 한컴오피스와 Hanul 엔진의 렌더링 및 바이트 무손실 일치율을 교차 검증(QA)해 주실 분
+> - Windows 전용 데스크톱 실행 파일(`.exe`, 설치 패키지) 빌드/테스트를 함께 진행해 주실 분  
+> Windows 환경을 주력으로 사용하시는 개발자 및 QA 참여자분의 합류를 진심으로 기다립니다!
+
+- **리버스 엔지니어링**: [rea](https://github.com/morluto/rea), Ghidra, Frida 등을 통한 바이너리 분석 및 스펙 도출
+- **크로스 플랫폼 개발**: Rust / TypeScript 기반 코어 파서, VS Code 확장, 데스크톱 UI(Electron/Tauri) 구현
+- **MCP & AI 파이프라인**: Claude Desktop, Cursor 등과의 MCP Tool 연동 설계 및 프롬프트 엔지니어링
+- **샘플 문서 제공 & QA**: 2000년대 초반(한글 2002~) 구버전 HWP, 복잡한 대회/공모전 서식 문서 테스트 및 버그 제보
 
 이슈 제안이나 기능 요청은 언제든지 [GitHub Issues](https://github.com/iamywl/hanul-hwpx/issues)를 통해 남겨주세요.
 
