@@ -49,14 +49,14 @@ function callMcp(requests) {
   });
 }
 
-test('MCP: tools/list는 10개 도구를 모두 제공해야 합니다', async () => {
+test('MCP: tools/list는 15개 도구를 모두 제공해야 합니다', async () => {
   const responses = await callMcp([
     { jsonrpc: '2.0', id: 1, method: 'tools/list' },
   ]);
 
   assert.equal(responses.length, 1);
   const tools = responses[0].result.tools;
-  assert.equal(tools.length, 10);
+  assert.equal(tools.length, 15);
   const toolNames = tools.map((t) => t.name);
   assert.ok(toolNames.includes('hanul_read_document'));
   assert.ok(toolNames.includes('hanul_inspect_tables'));
@@ -68,6 +68,11 @@ test('MCP: tools/list는 10개 도구를 모두 제공해야 합니다', async (
   assert.ok(toolNames.includes('hanul_create_document'));
   assert.ok(toolNames.includes('hanul_markdown_to_hwpx'));
   assert.ok(toolNames.includes('hanul_create_styled_document'));
+  assert.ok(toolNames.includes('hanul_find_and_replace'));
+  assert.ok(toolNames.includes('hanul_modify_table'));
+  assert.ok(toolNames.includes('hanul_insert_image'));
+  assert.ok(toolNames.includes('hanul_set_page_layout'));
+  assert.ok(toolNames.includes('hanul_append_content'));
 });
 
 test('MCP: hanul_read_document로 본문 및 마크다운 추출 검증', async () => {
@@ -426,4 +431,207 @@ test('MCP: hanul_create_styled_document 서명(글 뒤로) 생성 및 hanul_get_
   assert.ok(info.behindTextImageCount >= 1, 'behindTextImageCount가 1 이상이어야 합니다.');
   assert.ok(info.imageCount >= 1, 'imageCount가 1 이상이어야 합니다.');
 });
+
+test('MCP: hanul_find_and_replace 문서 내 텍스트 일괄 치환 검증', async () => {
+  const testDoc = path.resolve('dist/test_find_replace.hwpx');
+  const responses = await callMcp([
+    {
+      jsonrpc: '2.0',
+      id: 20,
+      method: 'tools/call',
+      params: {
+        name: 'hanul_create_document',
+        arguments: {
+          outputPath: testDoc,
+          title: '한컴 원본 문서',
+          paragraphs: ['한컴오피스는 과거의 표준이었으나, 한컴의 한계를 극복합니다.'],
+        },
+      },
+    },
+    {
+      jsonrpc: '2.0',
+      id: 21,
+      method: 'tools/call',
+      params: {
+        name: 'hanul_find_and_replace',
+        arguments: {
+          filePath: testDoc,
+          findText: '한컴',
+          replaceText: '한울',
+        },
+      },
+    },
+    {
+      jsonrpc: '2.0',
+      id: 22,
+      method: 'tools/call',
+      params: {
+        name: 'hanul_read_document',
+        arguments: { filePath: testDoc },
+      },
+    },
+  ]);
+
+  assert.equal(responses.length, 3);
+  assert.ok(responses[1].result.success);
+  assert.ok(responses[1].result.replacedCount >= 2, '최소 2건 이상 치환되어야 합니다.');
+
+  const readContent = responses[2].result.content[0].text;
+  assert.ok(readContent.includes('한울 원본 문서'));
+  assert.ok(readContent.includes('한울오피스'));
+});
+
+test('MCP: hanul_modify_table 표 셀 수정 및 새 행 추가 검증', async () => {
+  const testDoc = path.resolve('dist/test_mod_table.hwpx');
+  const responses = await callMcp([
+    {
+      jsonrpc: '2.0',
+      id: 30,
+      method: 'tools/call',
+      params: {
+        name: 'hanul_create_document',
+        arguments: {
+          outputPath: testDoc,
+          title: '표 수정 테스트 문서',
+          paragraphs: ['아래 표를 검증합니다.'],
+          tables: [
+            {
+              rows: [
+                ['이름', '역할'],
+                ['김철수', '개발자'],
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      jsonrpc: '2.0',
+      id: 31,
+      method: 'tools/call',
+      params: {
+        name: 'hanul_modify_table',
+        arguments: {
+          filePath: testDoc,
+          tableIndex: 0,
+          cellUpdates: [{ row: 1, col: 1, text: '수석 엔지니어' }],
+          appendRows: [['이영희', '디자이너']],
+        },
+      },
+    },
+    {
+      jsonrpc: '2.0',
+      id: 32,
+      method: 'tools/call',
+      params: {
+        name: 'hanul_inspect_tables',
+        arguments: { filePath: testDoc, tableIndex: 0 },
+      },
+    },
+  ]);
+
+  assert.equal(responses.length, 3);
+  assert.ok(responses[1].result.success);
+  assert.equal(responses[1].result.updatedCellsCount, 1);
+  assert.equal(responses[1].result.appendedRowsCount, 1);
+
+  const tables = JSON.parse(responses[2].result.content[0].text);
+  const tableData = tables[0];
+  assert.equal(tableData.rows, 3);
+  assert.equal(tableData.cells[1][1], '수석 엔지니어');
+  assert.equal(tableData.cells[2][0], '이영희');
+  assert.equal(tableData.cells[2][1], '디자이너');
+});
+
+test('MCP: hanul_insert_image 및 hanul_set_page_layout, hanul_append_content 종합 검증', async () => {
+  const testDoc = path.resolve('dist/test_advanced_mcp.hwpx');
+  const dummyImg = path.resolve('dist/dummy_stamp.png');
+  if (!fs.existsSync(dummyImg)) {
+    fs.writeFileSync(dummyImg, Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+  }
+
+  const responses = await callMcp([
+    {
+      jsonrpc: '2.0',
+      id: 40,
+      method: 'tools/call',
+      params: {
+        name: 'hanul_create_document',
+        arguments: {
+          outputPath: testDoc,
+          title: '종합 확장 테스트 문서',
+          paragraphs: ['기본 본문입니다.'],
+        },
+      },
+    },
+    {
+      jsonrpc: '2.0',
+      id: 41,
+      method: 'tools/call',
+      params: {
+        name: 'hanul_insert_image',
+        arguments: {
+          filePath: testDoc,
+          imagePath: dummyImg,
+          behindText: true,
+          widthPt: 120,
+          heightPt: 120,
+        },
+      },
+    },
+    {
+      jsonrpc: '2.0',
+      id: 42,
+      method: 'tools/call',
+      params: {
+        name: 'hanul_set_page_layout',
+        arguments: {
+          filePath: testDoc,
+          paperSize: 'B5',
+          orientation: 'portrait',
+          margins: { left: 25, right: 25, top: 20, bottom: 20 },
+        },
+      },
+    },
+    {
+      jsonrpc: '2.0',
+      id: 43,
+      method: 'tools/call',
+      params: {
+        name: 'hanul_append_content',
+        arguments: {
+          filePath: testDoc,
+          heading: '2. 추가된 섹션 제목',
+          paragraphs: ['새로운 단락이 성공적으로 덧붙여졌습니다.'],
+          table: {
+            rows: [
+              ['코드', '상태'],
+              ['OK', '정상작동'],
+            ],
+          },
+        },
+      },
+    },
+    {
+      jsonrpc: '2.0',
+      id: 44,
+      method: 'tools/call',
+      params: {
+        name: 'hanul_read_document',
+        arguments: { filePath: testDoc },
+      },
+    },
+  ]);
+
+  assert.equal(responses.length, 5);
+  assert.ok(responses[1].result.success);
+  assert.ok(responses[2].result.success);
+  assert.ok(responses[3].result.success);
+
+  const finalContent = responses[4].result.content[0].text;
+  assert.ok(finalContent.includes('종합 확장 테스트 문서'));
+  assert.ok(finalContent.includes('2. 추가된 섹션 제목'));
+  assert.ok(finalContent.includes('새로운 단락이 성공적으로 덧붙여졌습니다.'));
+});
+
 

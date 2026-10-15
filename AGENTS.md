@@ -27,7 +27,9 @@ flowchart TD
     
     Designer -->|글래스모피즘 & UI/UX 명세| Developer[💻 개발 에이전트\n.agents/developer.md]
     RE_AST -->|정규화된 AST & 파서 코드| Developer
-    Developer -->|크로스플랫폼 코어 & MCP 도구| QA[🛡️ QA & 검증 에이전트\n.agents/qa.md]
+    Developer -->|코어 엔진 API 전달| MCP_Dev[🔌 MCP 개발 에이전트\n.agents/mcp-developer.md]
+    MCP_Dev -->|한컴 15대 표준 MCP 도구| QA[🛡️ QA & 검증 에이전트\n.agents/qa.md]
+    Developer -->|크로스플랫폼 에디터| QA
     QA -->|라운드트립 / 호환성 피드백| RE_Diff
     QA -->|시각 검증 피드백| Designer
     QA -->|검증 결과 보고| Developer
@@ -113,6 +115,7 @@ hanul-hwpx/
 │   ├── planner.md                # 📋 기획 에이전트 가이드
 │   ├── ui-ux-designer.md         # 🎨 UI/UX 디자인 에이전트 가이드 (글래스모피즘 & Mac HIG)
 │   ├── developer.md              # 💻 개발 에이전트 가이드
+│   ├── mcp-developer.md          # 🔌 MCP 개발 에이전트 가이드 (한컴 전 기능 MCP화)
 │   ├── qa.md                     # 🛡️ QA & 검증 에이전트 가이드
 │   ├── re-decompile.md           # 🕵️ 정적 디컴파일 분석 에이전트
 │   ├── re-struct.md              # 🧬 구조체 복원 에이전트

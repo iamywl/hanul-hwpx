@@ -8,6 +8,7 @@ import * as readline from 'node:readline';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { unzipSync, zipSync, strToU8, strFromU8 } from 'fflate';
+import { DOMParser, XMLSerializer } from '@xmldom/xmldom';
 import { openDocument, parseDocumentBuffer } from '../core/document.js';
 import { CompoundFile } from '../core/cfbf.js';
 import { parseFileHeader } from '../core/hwp-record.js';
@@ -340,6 +341,129 @@ const TOOLS = [
         },
       },
       required: ['outputPath', 'title'],
+    },
+  },
+  {
+    name: 'hanul_find_and_replace',
+    description: 'HWPX 문서 내에서 특정 단어/문구를 찾아 다른 단어로 일괄 치환(Find & Replace)하고 새 파일로 저장하거나 원본을 갱신합니다.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: '치환 대상 HWPX 파일의 경로' },
+        findText: { type: 'string', description: '찾을 텍스트' },
+        replaceText: { type: 'string', description: '바꿀 새 텍스트' },
+        outputPath: { type: 'string', description: '결과를 저장할 파일 경로 (생략 시 filePath에 덮어쓰기)' },
+        matchCase: { type: 'boolean', description: '대소문자 일치 여부 (기본값: false)' },
+      },
+      required: ['filePath', 'findText', 'replaceText'],
+    },
+  },
+  {
+    name: 'hanul_modify_table',
+    description: '기존 HWPX 문서 내의 특정 표(Table)에서 특정 셀의 텍스트를 수정하거나, 새 행(Row)을 추가하여 문서를 갱신합니다.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: '수정할 HWPX 파일 경로' },
+        tableIndex: { type: 'integer', description: '수정할 표의 인덱스 (0부터 시작, 기본값: 0)' },
+        cellUpdates: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              row: { type: 'integer', description: '행 번호 (0부터 시작)' },
+              col: { type: 'integer', description: '열 번호 (0부터 시작)' },
+              text: { type: 'string', description: '입력할 새 텍스트' },
+            },
+            required: ['row', 'col', 'text'],
+          },
+          description: '수정할 셀 좌표 및 텍스트 목록',
+        },
+        appendRows: {
+          type: 'array',
+          items: {
+            type: 'array',
+            items: { type: 'string' },
+          },
+          description: '표의 맨 끝에 추가할 새 행 데이터 (2차원 문자열 배열)',
+        },
+        outputPath: { type: 'string', description: '저장할 파일 경로 (생략 시 filePath에 덮어쓰기)' },
+      },
+      required: ['filePath'],
+    },
+  },
+  {
+    name: 'hanul_insert_image',
+    description: '기존 HWPX 문서의 본문 끝 또는 특정 위치에 이미지나 서명(글 뒤로)을 삽입합니다.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: '이미지를 삽입할 HWPX 파일 경로' },
+        imagePath: { type: 'string', description: '삽입할 이미지 파일 경로 (PNG, JPG, BMP)' },
+        behindText: { type: 'boolean', description: '글 뒤로 배치 여부 (서명/직인 모드, 기본값: false)' },
+        widthPt: { type: 'number', description: '이미지 가로 너비(pt 단위, 기본값: 150)' },
+        heightPt: { type: 'number', description: '이미지 세로 높이(pt 단위, 기본값: 150)' },
+        outputPath: { type: 'string', description: '저장할 파일 경로 (생략 시 filePath에 덮어쓰기)' },
+      },
+      required: ['filePath', 'imagePath'],
+    },
+  },
+  {
+    name: 'hanul_set_page_layout',
+    description: 'HWPX 문서의 편집 용지 규격(A4, B5 등), 방향(세로/가로), 상하좌우 및 머리말/꼬리말 여백(mm 단위)을 변경합니다.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: '설정할 HWPX 파일 경로' },
+        paperSize: { type: 'string', enum: ['A4', 'A3', 'B5', 'Letter'], description: '용지 규격 (기본값: A4)' },
+        orientation: { type: 'string', enum: ['portrait', 'landscape'], description: '용지 방향 (기본값: portrait)' },
+        margins: {
+          type: 'object',
+          properties: {
+            left: { type: 'number', description: '좌측 여백 (mm)' },
+            right: { type: 'number', description: '우측 여백 (mm)' },
+            top: { type: 'number', description: '상단 여백 (mm)' },
+            bottom: { type: 'number', description: '하단 여백 (mm)' },
+            header: { type: 'number', description: '머리말 여백 (mm)' },
+            footer: { type: 'number', description: '꼬리말 여백 (mm)' },
+          },
+          description: '여백 설정 (단위: mm)',
+        },
+        outputPath: { type: 'string', description: '저장할 파일 경로 (생략 시 filePath에 덮어쓰기)' },
+      },
+      required: ['filePath'],
+    },
+  },
+  {
+    name: 'hanul_append_content',
+    description: '기존 HWPX 문서의 마지막에 새로운 소제목, 본문 문단들, 또는 표를 덧붙여 문서를 확장합니다.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: '내용을 추가할 HWPX 파일 경로' },
+        heading: { type: 'string', description: '추가할 섹션 제목 (선택)' },
+        paragraphs: {
+          type: 'array',
+          items: { type: 'string' },
+          description: '추가할 본문 문단 목록',
+        },
+        table: {
+          type: 'object',
+          properties: {
+            rows: {
+              type: 'array',
+              items: {
+                type: 'array',
+                items: { type: 'string' },
+              },
+            },
+          },
+          required: ['rows'],
+          description: '추가할 표 데이터',
+        },
+        outputPath: { type: 'string', description: '저장할 파일 경로 (생략 시 filePath에 덮어쓰기)' },
+      },
+      required: ['filePath'],
     },
   },
 ];
@@ -834,6 +958,408 @@ export class HanulMcpServer {
           outputPath,
           fileSize: stats.size,
           sectionsCount: sections.length,
+        });
+      }
+
+      if (name === 'hanul_find_and_replace') {
+        const filePath = path.resolve(args.filePath);
+        if (!fs.existsSync(filePath)) {
+          return this.sendError(id, -32602, `파일을 찾을 수 없습니다: ${filePath}`);
+        }
+        const outPath = args.outputPath ? path.resolve(args.outputPath) : filePath;
+        const findText = String(args.findText || '');
+        const replaceText = String(args.replaceText ?? '');
+        const matchCase = Boolean(args.matchCase);
+
+        if (!findText) {
+          return this.sendError(id, -32602, 'findText는 필수 파라미터입니다.');
+        }
+
+        const buf = fs.readFileSync(filePath);
+        const zipData = unzipSync(new Uint8Array(buf));
+        let totalReplaced = 0;
+        const escaped = findText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(escaped, matchCase ? 'g' : 'gi');
+
+        for (const [entryName, u8] of Object.entries(zipData)) {
+          if (entryName.startsWith('Contents/section') && entryName.endsWith('.xml')) {
+            let xml = strFromU8(u8);
+            const matches = xml.match(regex);
+            if (matches && matches.length > 0) {
+              totalReplaced += matches.length;
+              xml = xml.replace(regex, replaceText);
+              zipData[entryName] = strToU8(xml);
+            }
+          }
+        }
+
+        const outZip = zipSync(zipData);
+        fs.writeFileSync(outPath, Buffer.from(outZip));
+        const stats = fs.statSync(outPath);
+
+        return this.sendResult(id, {
+          content: [
+            {
+              type: 'text',
+              text: `텍스트 치환 완료: '${findText}' -> '${replaceText}' (총 ${totalReplaced}건 치환됨, 파일: ${outPath})`,
+            },
+          ],
+          success: true,
+          replacedCount: totalReplaced,
+          outputPath: outPath,
+          fileSize: stats.size,
+        });
+      }
+
+      if (name === 'hanul_modify_table') {
+        const filePath = path.resolve(args.filePath);
+        if (!fs.existsSync(filePath)) {
+          return this.sendError(id, -32602, `파일을 찾을 수 없습니다: ${filePath}`);
+        }
+        const outPath = args.outputPath ? path.resolve(args.outputPath) : filePath;
+        const tableIndex = Number(args.tableIndex || 0);
+        const cellUpdates = Array.isArray(args.cellUpdates) ? args.cellUpdates : [];
+        const appendRows = Array.isArray(args.appendRows) ? args.appendRows : [];
+
+        const buf = fs.readFileSync(filePath);
+        const zipData = unzipSync(new Uint8Array(buf));
+        const secEntry = 'Contents/section0.xml';
+
+        if (!zipData[secEntry]) {
+          return this.sendError(id, -32602, 'HWPX 내에서 Contents/section0.xml을 찾을 수 없습니다.');
+        }
+
+        const xmlStr = strFromU8(zipData[secEntry]);
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(xmlStr, 'text/xml');
+
+        const tables = doc.getElementsByTagName('hp:tbl');
+        if (tables.length <= tableIndex) {
+          return this.sendError(id, -32602, `문서 내에 ${tableIndex}번 표가 존재하지 않습니다. (총 표 개수: ${tables.length})`);
+        }
+
+        const tbl = tables.item(tableIndex)!;
+        const rows = tbl.getElementsByTagName('hp:tr');
+        let updatedCellsCount = 0;
+
+        for (const u of cellUpdates) {
+          const r = Number(u.row);
+          const c = Number(u.col);
+          if (r < rows.length) {
+            const rowElem = rows.item(r)!;
+            const cells = rowElem.getElementsByTagName('hp:tc');
+            if (c < cells.length) {
+              const cellElem = cells.item(c)!;
+              const tNodes = cellElem.getElementsByTagName('hp:t');
+              if (tNodes.length > 0) {
+                tNodes.item(0)!.textContent = String(u.text);
+                updatedCellsCount++;
+              }
+            }
+          }
+        }
+
+        let appendedRowsCount = 0;
+        if (appendRows.length > 0 && rows.length > 0) {
+          const templateRow = rows.item(rows.length - 1)!;
+          let newRowIdx = rows.length;
+          for (const newRowData of appendRows) {
+            const newRow = templateRow.cloneNode(true) as any;
+            const cells = newRow.getElementsByTagName('hp:tc');
+            for (let c = 0; c < cells.length; c++) {
+              const cellElem = cells.item(c)!;
+              const cellAddrList = cellElem.getElementsByTagName('hp:cellAddr');
+              if (cellAddrList.length > 0) {
+                cellAddrList.item(0)!.setAttribute('rowAddr', String(newRowIdx));
+                cellAddrList.item(0)!.setAttribute('colAddr', String(c));
+              }
+              const tNodes = cellElem.getElementsByTagName('hp:t');
+              const cellText = c < newRowData.length ? String(newRowData[c]) : '';
+              if (tNodes.length > 0) {
+                tNodes.item(0)!.textContent = cellText;
+              }
+            }
+            tbl.appendChild(newRow);
+            appendedRowsCount++;
+            newRowIdx++;
+          }
+        }
+
+        const serializer = new XMLSerializer();
+        const newXml = serializer.serializeToString(doc);
+        zipData[secEntry] = strToU8(newXml);
+
+        const outZip = zipSync(zipData);
+        fs.writeFileSync(outPath, Buffer.from(outZip));
+        const stats = fs.statSync(outPath);
+
+        return this.sendResult(id, {
+          content: [
+            {
+              type: 'text',
+              text: `표(Table #${tableIndex}) 수정 완료: 셀 수정 ${updatedCellsCount}개, 새 행 추가 ${appendedRowsCount}개 (${outPath})`,
+            },
+          ],
+          success: true,
+          tableIndex,
+          updatedCellsCount,
+          appendedRowsCount,
+          outputPath: outPath,
+          fileSize: stats.size,
+        });
+      }
+
+      if (name === 'hanul_insert_image') {
+        const filePath = path.resolve(args.filePath);
+        const imagePath = path.resolve(args.imagePath);
+        if (!fs.existsSync(filePath)) {
+          return this.sendError(id, -32602, `문서 파일을 찾을 수 없습니다: ${filePath}`);
+        }
+        if (!fs.existsSync(imagePath)) {
+          return this.sendError(id, -32602, `이미지 파일을 찾을 수 없습니다: ${imagePath}`);
+        }
+        const outPath = args.outputPath ? path.resolve(args.outputPath) : filePath;
+        const behindText = Boolean(args.behindText);
+        const widthPt = Number(args.widthPt || 150);
+        const heightPt = Number(args.heightPt || 150);
+        const widthHwpu = Math.round(widthPt * 100);
+        const heightHwpu = Math.round(heightPt * 100);
+
+        const buf = fs.readFileSync(filePath);
+        const imgBuf = fs.readFileSync(imagePath);
+        const zipData = unzipSync(new Uint8Array(buf));
+
+        const ext = path.extname(imagePath).toLowerCase().replace('.', '') || 'png';
+        const imgBinaryId = `image_${Date.now()}`;
+        const binDataPath = `BinData/${imgBinaryId}.${ext}`;
+        zipData[binDataPath] = new Uint8Array(imgBuf);
+
+        const secEntry = 'Contents/section0.xml';
+        if (!zipData[secEntry]) {
+          return this.sendError(id, -32602, 'HWPX section0.xml을 찾을 수 없습니다.');
+        }
+
+        const xmlStr = strFromU8(zipData[secEntry]);
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(xmlStr, 'text/xml');
+        const secElem = doc.documentElement;
+        if (!secElem) {
+          return this.sendError(id, -32602, '유효한 섹션 요소를 찾을 수 없습니다.');
+        }
+
+        const newP = doc.createElement('hp:p');
+        const newRun = doc.createElement('hp:run');
+        const newPic = doc.createElement('hp:pic');
+        newPic.setAttribute('id', String(Date.now()));
+        newPic.setAttribute('zOrder', behindText ? '-1' : '0');
+        newPic.setAttribute('textWrap', behindText ? 'behindText' : 'inLineWithText');
+        newPic.setAttribute('width', String(widthHwpu));
+        newPic.setAttribute('height', String(heightHwpu));
+
+        const szElem = doc.createElement('hp:sz');
+        szElem.setAttribute('width', String(widthHwpu));
+        szElem.setAttribute('height', String(heightHwpu));
+        newPic.appendChild(szElem);
+
+        const imgElem = doc.createElement('hp:img');
+        imgElem.setAttribute('src', binDataPath);
+        newPic.appendChild(imgElem);
+
+        newRun.appendChild(newPic);
+        newP.appendChild(newRun);
+        secElem.appendChild(newP);
+
+        const serializer = new XMLSerializer();
+        const newXml = serializer.serializeToString(doc);
+        zipData[secEntry] = strToU8(newXml);
+
+        const outZip = zipSync(zipData);
+        fs.writeFileSync(outPath, Buffer.from(outZip));
+        const stats = fs.statSync(outPath);
+
+        return this.sendResult(id, {
+          content: [
+            {
+              type: 'text',
+              text: `이미지 삽입 완료 (${behindText ? '글 뒤로(서명/직인)' : '일반 배치'}): ${outPath} (${stats.size} bytes)`,
+            },
+          ],
+          success: true,
+          behindText,
+          binDataPath,
+          outputPath: outPath,
+          fileSize: stats.size,
+        });
+      }
+
+      if (name === 'hanul_set_page_layout') {
+        const filePath = path.resolve(args.filePath);
+        if (!fs.existsSync(filePath)) {
+          return this.sendError(id, -32602, `파일을 찾을 수 없습니다: ${filePath}`);
+        }
+        const outPath = args.outputPath ? path.resolve(args.outputPath) : filePath;
+        const paperSize = String(args.paperSize || 'A4').toUpperCase();
+        const orientation = String(args.orientation || 'portrait').toLowerCase();
+        const margins = args.margins || {};
+
+        const buf = fs.readFileSync(filePath);
+        const zipData = unzipSync(new Uint8Array(buf));
+        const secEntry = 'Contents/section0.xml';
+
+        if (!zipData[secEntry]) {
+          return this.sendError(id, -32602, 'HWPX section0.xml을 찾을 수 없습니다.');
+        }
+
+        const xmlStr = strFromU8(zipData[secEntry]);
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(xmlStr, 'text/xml');
+
+        let w = 59528;
+        let h = 84188;
+        if (paperSize === 'B5') { w = 51590; h = 72850; }
+        else if (paperSize === 'A3') { w = 84188; h = 119056; }
+        else if (paperSize === 'LETTER') { w = 61200; h = 79200; }
+
+        if (orientation === 'landscape') {
+          const tmp = w; w = h; h = tmp;
+        }
+
+        const pagePrList = doc.getElementsByTagName('hp:pagePr');
+        if (pagePrList.length > 0) {
+          const pagePr = pagePrList.item(0)!;
+          pagePr.setAttribute('width', String(w));
+          pagePr.setAttribute('height', String(h));
+          pagePr.setAttribute('landscape', orientation === 'landscape' ? '1' : '0');
+
+          const marginList = pagePr.getElementsByTagName('hp:margin');
+          const marginElem = marginList.length > 0 ? marginList.item(0)! : doc.createElement('hp:margin');
+          const toHwpu = (mm?: number, defMm = 20) => Math.round((mm !== undefined ? mm : defMm) * 283.46);
+
+          marginElem.setAttribute('left', String(toHwpu(margins.left, 20)));
+          marginElem.setAttribute('right', String(toHwpu(margins.right, 20)));
+          marginElem.setAttribute('top', String(toHwpu(margins.top, 20)));
+          marginElem.setAttribute('bottom', String(toHwpu(margins.bottom, 15)));
+          marginElem.setAttribute('header', String(toHwpu(margins.header, 10)));
+          marginElem.setAttribute('footer', String(toHwpu(margins.footer, 10)));
+
+          if (marginList.length === 0) {
+            pagePr.appendChild(marginElem);
+          }
+        }
+
+        const serializer = new XMLSerializer();
+        const newXml = serializer.serializeToString(doc);
+        zipData[secEntry] = strToU8(newXml);
+
+        const outZip = zipSync(zipData);
+        fs.writeFileSync(outPath, Buffer.from(outZip));
+        const stats = fs.statSync(outPath);
+
+        return this.sendResult(id, {
+          content: [
+            {
+              type: 'text',
+              text: `편집 용지 설정 완료: ${paperSize} (${orientation}, 좌우 ${margins.left || 20}mm, 상하 ${margins.top || 20}mm) -> ${outPath}`,
+            },
+          ],
+          success: true,
+          paperSize,
+          orientation,
+          outputPath: outPath,
+          fileSize: stats.size,
+        });
+      }
+
+      if (name === 'hanul_append_content') {
+        const filePath = path.resolve(args.filePath);
+        if (!fs.existsSync(filePath)) {
+          return this.sendError(id, -32602, `파일을 찾을 수 없습니다: ${filePath}`);
+        }
+        const outPath = args.outputPath ? path.resolve(args.outputPath) : filePath;
+        const heading = args.heading ? String(args.heading) : undefined;
+        const paragraphs = Array.isArray(args.paragraphs) ? args.paragraphs : [];
+        const table = args.table;
+
+        const buf = fs.readFileSync(filePath);
+        const zipData = unzipSync(new Uint8Array(buf));
+        const secEntry = 'Contents/section0.xml';
+
+        if (!zipData[secEntry]) {
+          return this.sendError(id, -32602, 'HWPX section0.xml을 찾을 수 없습니다.');
+        }
+
+        const xmlStr = strFromU8(zipData[secEntry]);
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(xmlStr, 'text/xml');
+        const secElem = doc.documentElement;
+        if (!secElem) {
+          return this.sendError(id, -32602, '유효한 섹션 요소를 찾을 수 없습니다.');
+        }
+
+        // 1. 소제목 추가
+        if (heading) {
+          const headP = doc.createElement('hp:p');
+          const run = doc.createElement('hp:run');
+          const t = doc.createElement('hp:t');
+          t.textContent = heading;
+          run.appendChild(t);
+          headP.appendChild(run);
+          secElem.appendChild(headP);
+        }
+
+        // 2. 문단 추가
+        for (const pText of paragraphs) {
+          const pElem = doc.createElement('hp:p');
+          const run = doc.createElement('hp:run');
+          const t = doc.createElement('hp:t');
+          t.textContent = String(pText);
+          run.appendChild(t);
+          pElem.appendChild(run);
+          secElem.appendChild(pElem);
+        }
+
+        // 3. 표 추가
+        if (table && Array.isArray(table.rows) && table.rows.length > 0) {
+          const tblElem = doc.createElement('hp:tbl');
+          tblElem.setAttribute('id', String(Date.now()));
+          tblElem.setAttribute('zOrder', '0');
+
+          for (const rowData of table.rows) {
+            const trElem = doc.createElement('hp:tr');
+            for (const cellText of rowData) {
+              const tcElem = doc.createElement('hp:tc');
+              const cellP = doc.createElement('hp:p');
+              const run = doc.createElement('hp:run');
+              const t = doc.createElement('hp:t');
+              t.textContent = String(cellText);
+              run.appendChild(t);
+              cellP.appendChild(run);
+              tcElem.appendChild(cellP);
+              trElem.appendChild(tcElem);
+            }
+            tblElem.appendChild(trElem);
+          }
+          secElem.appendChild(tblElem);
+        }
+
+        const serializer = new XMLSerializer();
+        const newXml = serializer.serializeToString(doc);
+        zipData[secEntry] = strToU8(newXml);
+
+        const outZip = zipSync(zipData);
+        fs.writeFileSync(outPath, Buffer.from(outZip));
+        const stats = fs.statSync(outPath);
+
+        return this.sendResult(id, {
+          content: [
+            {
+              type: 'text',
+              text: `문서 내용 덧붙이기 완료: 문단 ${paragraphs.length}개${heading ? ', 소제목' : ''}${table ? ', 신규 표' : ''} 추가 (${outPath})`,
+            },
+          ],
+          success: true,
+          outputPath: outPath,
+          fileSize: stats.size,
         });
       }
 
