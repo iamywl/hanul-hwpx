@@ -77,10 +77,22 @@ export function decryptViewTextStream(stream: Buffer): Buffer {
   }
 }
 
+export interface ParsedTableCell {
+  row: number;
+  col: number;
+  rowSpan: number;
+  colSpan: number;
+  width?: number;
+  height?: number;
+  text: string;
+}
+
 export interface ParsedTable {
   rows: number;
   cols: number;
-  cells: string[][]; // 2D 텍스트 배열
+  cells: string[][]; // 2D 텍스트 배열 (기존 호환)
+  cellDetails?: ParsedTableCell[];
+  hasMergedCells?: boolean;
 }
 
 export interface ParsedHwpDocument {
@@ -203,9 +215,15 @@ export function parseHwpBuffer(buffer: Buffer): ParsedHwpDocument {
     const paragraphs: string[] = [];
     const tables: ParsedTable[] = [];
 
-    let currentTable: ParsedTable | null = null;
-    let currentCellRow = 0;
-    let currentCellCol = 0;
+    // 중첩 표를 지원하기 위한 테이블 스택
+    interface TableContext {
+      table: ParsedTable;
+      cellRow: number;
+      cellCol: number;
+      cellsParsed: number;
+      totalCells: number;
+    }
+    const tableStack: TableContext[] = [];
 
     for (let r = 0; r < records.length; r++) {
       const rec = records[r];
@@ -215,9 +233,18 @@ export function parseHwpBuffer(buffer: Buffer): ParsedHwpDocument {
         const text = cleanParaText(rec.data).trim();
         if (text.length > 0) {
           paragraphs.push(text);
-          if (currentTable && currentCellRow < currentTable.rows && currentCellCol < currentTable.cols) {
-            const existing = currentTable.cells[currentCellRow][currentCellCol];
-            currentTable.cells[currentCellRow][currentCellCol] = existing ? `${existing} ${text}` : text;
+          if (tableStack.length > 0) {
+            const ctx = tableStack[tableStack.length - 1];
+            if (ctx.cellRow < ctx.table.rows && ctx.cellCol < ctx.table.cols) {
+              const existing = ctx.table.cells[ctx.cellRow][ctx.cellCol];
+              ctx.table.cells[ctx.cellRow][ctx.cellCol] = existing ? `${existing} ${text}` : text;
+              if (ctx.table.cellDetails) {
+                const detail = ctx.table.cellDetails.find(c => c.row === ctx.cellRow && c.col === ctx.cellCol);
+                if (detail) {
+                  detail.text = ctx.table.cells[ctx.cellRow][ctx.cellCol];
+                }
+              }
+            }
           }
         }
       }
@@ -228,24 +255,53 @@ export function parseHwpBuffer(buffer: Buffer): ParsedHwpDocument {
         const cols = rec.data.readUInt16LE(6);
 
         if (rows > 0 && cols > 0 && rows < 1000 && cols < 100) {
-          currentTable = {
+          const newTable: ParsedTable = {
             rows,
             cols,
             cells: Array.from({ length: rows }, () => Array(cols).fill('')),
+            cellDetails: [],
+            hasMergedCells: false,
           };
-          tables.push(currentTable);
-          currentCellRow = 0;
-          currentCellCol = 0;
+          tables.push(newTable);
+          tableStack.push({
+            table: newTable,
+            cellRow: 0,
+            cellCol: 0,
+            cellsParsed: 0,
+            totalCells: rows * cols,
+          });
         }
       }
 
       // 셀 헤더 (LIST_HEADER = 72)
-      if (rec.tagId === HWP_TAG.LIST_HEADER && currentTable && rec.data.length >= 8) {
+      if (rec.tagId === HWP_TAG.LIST_HEADER && tableStack.length > 0 && rec.data.length >= 8) {
+        const ctx = tableStack[tableStack.length - 1];
         const colIdx = rec.data.readUInt16LE(2);
         const rowIdx = rec.data.readUInt16LE(4);
-        if (rowIdx < currentTable.rows && colIdx < currentTable.cols) {
-          currentCellRow = rowIdx;
-          currentCellCol = colIdx;
+        const colSpan = rec.data.length >= 8 ? (rec.data.readUInt16LE(6) || 1) : 1;
+        const rowSpan = rec.data.length >= 10 ? (rec.data.readUInt16LE(8) || 1) : 1;
+        const width = rec.data.length >= 14 ? rec.data.readUInt32LE(10) : undefined;
+        const height = rec.data.length >= 18 ? rec.data.readUInt32LE(14) : undefined;
+
+        if (rowIdx < ctx.table.rows && colIdx < ctx.table.cols) {
+          ctx.cellRow = rowIdx;
+          ctx.cellCol = colIdx;
+          ctx.cellsParsed++;
+          if (colSpan > 1 || rowSpan > 1) {
+            ctx.table.hasMergedCells = true;
+          }
+          ctx.table.cellDetails?.push({
+            row: rowIdx,
+            col: colIdx,
+            colSpan: colSpan > 0 ? colSpan : 1,
+            rowSpan: rowSpan > 0 ? rowSpan : 1,
+            width,
+            height,
+            text: '',
+          });
+        }
+        if (ctx.cellsParsed >= ctx.totalCells && tableStack.length > 1) {
+          tableStack.pop();
         }
       }
     }

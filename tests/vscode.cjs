@@ -15,7 +15,7 @@ exports.run = async () => {
   const results = [];
   const cancellation = new vscode.CancellationTokenSource();
   try {
-    const extension = vscode.extensions.getExtension('hanul-local.hanul-hwpx');
+    const extension = vscode.extensions.getExtension('KodingKO.hanul-hwpx');
     assert(extension, 'Development extension must be registered');
     const { provider } = await extension.activate();
     const directory = path.join(root, '.test', 'documents');

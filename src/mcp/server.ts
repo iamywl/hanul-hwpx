@@ -14,6 +14,7 @@ import { parseFileHeader } from '../core/hwp-record.js';
 import { validateBytes } from '../storage.js';
 import { HwpxDocumentBuilder, TableDef } from '../core/hwpx-builder.js';
 import { compileMarkdownToHwpx } from '../core/markdown-compiler.js';
+import { parseHwpxBuffer, ParsedPicture } from '../core/hwpx-parser.js';
 
 interface JsonRpcRequest {
   jsonrpc: '2.0';
@@ -480,6 +481,7 @@ export class HanulMcpServer {
         let isCompressed = false;
         let imageCount = 0;
 
+        let behindTextImageCount = 0;
         if (doc.format === 'hwp') {
           try {
             const cfb = new CompoundFile(buf);
@@ -496,6 +498,12 @@ export class HanulMcpServer {
           try {
             const unzipped = unzipSync(buf);
             imageCount = Object.keys(unzipped).filter((k) => k.toLowerCase().startsWith('bindata/')).length;
+            const hwpxDoc = parseHwpxBuffer(buf);
+            for (const sec of hwpxDoc.sections) {
+              if (sec.pictures) {
+                behindTextImageCount += sec.pictures.filter((p) => p.isBehindText).length;
+              }
+            }
           } catch {}
         }
 
@@ -513,6 +521,7 @@ export class HanulMcpServer {
           paragraphCount: doc.paragraphs.length,
           tableCount: doc.tables.length,
           imageCount,
+          behindTextImageCount, // 서명/도장 등 '글 뒤로' 배치된 개체 개수
           preview: doc.paragraphs.slice(0, 3).join('\n'),
         };
 
@@ -797,6 +806,12 @@ export class HanulMcpServer {
           if (Array.isArray(sec.images)) {
             for (const img of sec.images) {
               builder.addImage(img);
+            }
+          }
+
+          if (Array.isArray(sec.signatures)) {
+            for (const sig of sec.signatures) {
+              builder.addSignature(sig);
             }
           }
 

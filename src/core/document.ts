@@ -5,11 +5,11 @@
 
 import * as fs from 'node:fs';
 import { parseHwpBuffer, ParsedHwpDocument, ParsedTable } from './hwp-parser.js';
-import { parseHwpxBuffer, ParsedHwpxDocument } from './hwpx-parser.js';
+import { parseHwpxBuffer, ParsedHwpxDocument, ParsedPicture } from './hwpx-parser.js';
 import { CompoundFile } from './cfbf.js';
 import { parseRecords, decompressStream } from './hwp-record.js';
 
-export { CompoundFile, parseRecords, decompressStream, parseHwpBuffer, parseHwpxBuffer };
+export { CompoundFile, parseRecords, decompressStream, parseHwpBuffer, parseHwpxBuffer, ParsedPicture };
 
 export interface UnifiedDocument {
   format: 'hwp' | 'hwpx';
@@ -17,6 +17,7 @@ export interface UnifiedDocument {
   fullText: string;
   paragraphs: string[];
   tables: ParsedTable[];
+  pictures?: ParsedPicture[];
   toMarkdown(): string;
 }
 
@@ -94,10 +95,12 @@ export function parseDocumentBuffer(buffer: Buffer): UnifiedDocument {
     const parsed = parseHwpxBuffer(buffer);
     const paragraphs: string[] = [];
     const tables: ParsedTable[] = [];
+    const pictures: ParsedPicture[] = [];
 
     for (const sec of parsed.sections) {
       paragraphs.push(...sec.paragraphs);
       tables.push(...sec.tables);
+      if (sec.pictures) pictures.push(...sec.pictures);
     }
 
     return {
@@ -106,6 +109,7 @@ export function parseDocumentBuffer(buffer: Buffer): UnifiedDocument {
       fullText: parsed.fullText,
       paragraphs,
       tables,
+      pictures,
       toMarkdown(): string {
         let md = `# HWPX 문서 (${parsed.version})\n\n`;
         md += parsed.fullText;

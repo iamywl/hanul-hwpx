@@ -367,3 +367,63 @@ test('MCP: hanul_create_styled_document로 고급 서식 HWPX 생성 검증', as
   assert.ok(doc.fullText.includes('창업동아리 활동계획서'));
   assert.ok(doc.fullText.includes('StudyBridge'));
 });
+
+test('MCP: hanul_create_styled_document 서명(글 뒤로) 생성 및 hanul_get_document_info behindTextImageCount 검증', async () => {
+  const outHwpx = path.resolve('dist/test_styled_signature.hwpx');
+  if (fs.existsSync(outHwpx)) fs.unlinkSync(outHwpx);
+
+  const dummyImg = path.resolve('dist/dummy_stamp.png');
+  if (!fs.existsSync(dummyImg)) {
+    const pngBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    fs.writeFileSync(dummyImg, Buffer.from(pngBase64, 'base64'));
+  }
+
+  const responses = await callMcp([
+    {
+      jsonrpc: '2.0',
+      id: 11,
+      method: 'tools/call',
+      params: {
+        name: 'hanul_create_styled_document',
+        arguments: {
+          outputPath: outHwpx,
+          title: '외주용역 과업수행 결과보고서',
+          subtitle: '서명 및 직인 날인 검증',
+          sections: [
+            {
+              heading: '1. 용역 개요',
+              paragraphs: ['본 결과보고서의 내용이 모두 사실임을 확인하며 대표자가 날인합니다.'],
+              signatures: [
+                {
+                  label: '대표자 (직인/서명) : 홍길동 (인)',
+                  imagePath: dummyImg,
+                  width: 5600,
+                  height: 5600,
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      jsonrpc: '2.0',
+      id: 12,
+      method: 'tools/call',
+      params: {
+        name: 'hanul_get_document_info',
+        arguments: { filePath: outHwpx },
+      },
+    },
+  ]);
+
+  assert.equal(responses.length, 2);
+  assert.equal(responses[0].result.success, true);
+  assert.ok(fs.existsSync(outHwpx));
+
+  const info = responses[1].result.metadata;
+  assert.equal(info.format, 'hwpx');
+  assert.ok(info.behindTextImageCount >= 1, 'behindTextImageCount가 1 이상이어야 합니다.');
+  assert.ok(info.imageCount >= 1, 'imageCount가 1 이상이어야 합니다.');
+});
+

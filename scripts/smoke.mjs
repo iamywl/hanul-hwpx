@@ -6,7 +6,10 @@ import { validateBytes } from '../dist/storage.mjs';
 import { unzipSync } from 'fflate';
 
 const preview = await startPreview(0);
-const browser = await chromium.launch({ headless: true });
+const browser = await chromium.launch({
+  headless: true,
+  executablePath: process.env.PLAYWRIGHT_CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+});
 const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
 const errors = [];
 page.on('pageerror', e => errors.push(e.message));
@@ -50,9 +53,21 @@ try {
     await page.keyboard.insertText(text);
     if (text !== 'HWPX · HWP') await page.keyboard.press('Tab');
   }
+  // F7 편집용지 대화상자 GUI 노출 및 팝업 검증
+  const pageSetupBtn = page.locator('#hanul-btn-page-setup');
+  assert(await pageSetupBtn.isVisible(), '편집용지(F7) 버튼이 툴바에 노출되어야 합니다');
+  await pageSetupBtn.click();
+  await page.waitForTimeout(300);
+  const hasDialog = await page.evaluate(() => {
+    return !!document.querySelector('.page-setup-dialog, .dialog-panel, .dialog-overlay, .modal-dialog, [class*="dialog"]');
+  });
+  console.log('F7 편집용지 대화상자 팝업 여부:', hasDialog);
+  assert(hasDialog, 'F7 편집용지 대화상자가 화면에 정상 팝업되어야 합니다');
+  await page.keyboard.press('Escape');
   await page.waitForTimeout(200);
+
   console.log('STATE', await page.locator('#hanul-state').innerText());
-  await page.locator('#hanul-save').click();
+  await page.locator('#hanul-menu-save').click();
   await page.waitForFunction(() => window.__lastExport && document.getElementById('hanul-state').textContent === '저장 완료', null, { timeout: 30000 });
   const exported = await page.evaluate(() => window.__lastExport);
   assert(exported.version > 0, 'Typing must mark document dirty');
@@ -81,7 +96,7 @@ try {
   assert(new TextDecoder().decode(unzipSync(new Uint8Array(hwpRoundtrip))['Contents/section0.xml']).includes('지원 범위'), 'Table text must survive HWP conversion');
   await page.evaluate(bytes => window.postMessage({ type: 'request', id: 'restore-test', method: 'load', params: { bytes, name: '복구.hwpx', restored: true } }, location.origin), exported.bytes);
   await page.waitForFunction(() => window.__previewMessages.some(m => m.type === 'response' && m.id === 'restore-test'));
-  await page.locator('#hanul-save').click();
+  await page.locator('#hanul-menu-save').click();
   await page.waitForFunction(() => window.__lastExport?.version === 1 && document.getElementById('hanul-state').textContent === '저장 완료');
   await page.screenshot({ path: 'artifacts/editor-preview.png', fullPage: true });
   assert.deepEqual(errors, []);

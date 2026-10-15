@@ -22,20 +22,32 @@ class HanulDocument implements vscode.CustomDocument {
 }
 class HanulProvider implements vscode.CustomEditorProvider<HanulDocument> {
   readonly documents = new Map<string, HanulDocument>();
+  activeDocument?: HanulDocument;
   private readonly emitter = new vscode.EventEmitter<vscode.CustomDocumentContentChangeEvent<HanulDocument>>();
   readonly onDidChangeCustomDocument = this.emitter.event;
   constructor(private readonly context: vscode.ExtensionContext, private readonly log: vscode.OutputChannel) { context.subscriptions.push(this.emitter); }
+  getActiveDocument(): HanulDocument | undefined {
+    return this.activeDocument || Array.from(this.documents.values())[0];
+  }
   async openCustomDocument(uri: vscode.Uri, openContext: vscode.CustomDocumentOpenContext): Promise<HanulDocument> {
     const original = uri.scheme === 'untitled' ? new Uint8Array() : await vscode.workspace.fs.readFile(uri);
     const bytes = openContext.backupId ? await vscode.workspace.fs.readFile(vscode.Uri.parse(openContext.backupId)) : openContext.untitledDocumentData ?? original;
     if (bytes.length) validateBytes(bytes, formatOf(uri.path));
     const document = new HanulDocument(uri, bytes, original.length ? digest(original) : null, !!openContext.backupId);
     this.documents.set(uri.toString(), document);
-    document.onDidDispose(() => this.documents.delete(uri.toString()));
+    document.onDidDispose(() => {
+      this.documents.delete(uri.toString());
+      if (this.activeDocument === document) this.activeDocument = undefined;
+    });
     return document;
   }
   async resolveCustomEditor(document: HanulDocument, panel: vscode.WebviewPanel): Promise<void> {
     document.panel = panel;
+    if (panel.active) this.activeDocument = document;
+    panel.onDidChangeViewState(e => {
+      if (e.webviewPanel.active) this.activeDocument = document;
+      else if (this.activeDocument === document) this.activeDocument = undefined;
+    });
     panel.webview.options = { enableScripts: true, localResourceRoots: [vscode.Uri.joinPath(this.context.extensionUri, 'vendor'), vscode.Uri.joinPath(this.context.extensionUri, 'media')] };
     const receiver = panel.webview.onDidReceiveMessage(async (message: any) => {
       try {
@@ -144,6 +156,43 @@ export function activate(context: vscode.ExtensionContext) {
     await vscode.workspace.fs.writeFile(target, bytes);
     await open(target);
   }));
-  // Development diagnostics are used by the VS Code integration suite, never exposed in a packaged build.
+  const postAction = (method: string, params: Record<string, unknown> = {}) => {
+    const doc = provider.getActiveDocument();
+    if (doc?.panel && doc.ready) {
+      void doc.panel.webview.postMessage({ type: 'request', id: randomUUID(), method, params });
+    }
+  };
+
+  context.subscriptions.push(vscode.commands.registerCommand('hanul.find', async () => postAction('find')));
+  context.subscriptions.push(vscode.commands.registerCommand('hanul.escape', async () => postAction('escape')));
+  context.subscriptions.push(vscode.commands.registerCommand('hanul.table.selectCell', async () => postAction('tableAction', { action: 'selectCell' })));
+  context.subscriptions.push(vscode.commands.registerCommand('hanul.table.resizeWidthNarrow', async () => postAction('tableAction', { action: 'resize', key: 'ArrowLeft' })));
+  context.subscriptions.push(vscode.commands.registerCommand('hanul.table.resizeWidthWide', async () => postAction('tableAction', { action: 'resize', key: 'ArrowRight' })));
+  context.subscriptions.push(vscode.commands.registerCommand('hanul.table.resizeHeightShort', async () => postAction('tableAction', { action: 'resize', key: 'ArrowUp' })));
+  context.subscriptions.push(vscode.commands.registerCommand('hanul.table.resizeHeightTall', async () => postAction('tableAction', { action: 'resize', key: 'ArrowDown' })));
+  context.subscriptions.push(vscode.commands.registerCommand('hanul.table.resizeLocalWidthNarrow', async () => postAction('tableAction', { action: 'resizeLocal', key: 'ArrowLeft' })));
+  context.subscriptions.push(vscode.commands.registerCommand('hanul.table.resizeLocalWidthWide', async () => postAction('tableAction', { action: 'resizeLocal', key: 'ArrowRight' })));
+  context.subscriptions.push(vscode.commands.registerCommand('hanul.table.resizeLocalHeightShort', async () => postAction('tableAction', { action: 'resizeLocal', key: 'ArrowUp' })));
+  context.subscriptions.push(vscode.commands.registerCommand('hanul.table.resizeLocalHeightTall', async () => postAction('tableAction', { action: 'resizeLocal', key: 'ArrowDown' })));
+  context.subscriptions.push(vscode.commands.registerCommand('hanul.table.resizeBoundaryLeft', async () => postAction('tableAction', { action: 'resizeBoundary', key: 'ArrowLeft' })));
+  context.subscriptions.push(vscode.commands.registerCommand('hanul.table.resizeBoundaryRight', async () => postAction('tableAction', { action: 'resizeBoundary', key: 'ArrowRight' })));
+  context.subscriptions.push(vscode.commands.registerCommand('hanul.table.resizeBoundaryUp', async () => postAction('tableAction', { action: 'resizeBoundary', key: 'ArrowUp' })));
+  context.subscriptions.push(vscode.commands.registerCommand('hanul.table.toggleHandles', async () => postAction('tableAction', { action: 'toggleHandles' })));
+  context.subscriptions.push(vscode.commands.registerCommand('hanul.table.cellProps', async () => postAction('tableAction', { action: 'props' })));
+  context.subscriptions.push(vscode.commands.registerCommand('hanul.table.insertRow', async () => postAction('tableAction', { action: 'insertRow' })));
+  context.subscriptions.push(vscode.commands.registerCommand('hanul.table.deleteRow', async () => postAction('tableAction', { action: 'deleteRow' })));
+  context.subscriptions.push(vscode.commands.registerCommand('hanul.table.insertCol', async () => postAction('tableAction', { action: 'insertCol' })));
+  context.subscriptions.push(vscode.commands.registerCommand('hanul.table.deleteCol', async () => postAction('tableAction', { action: 'deleteCol' })));
+  context.subscriptions.push(vscode.commands.registerCommand('hanul.table.merge', async () => postAction('tableAction', { action: 'merge' })));
+  context.subscriptions.push(vscode.commands.registerCommand('hanul.table.split', async () => postAction('tableAction', { action: 'split' })));
+  context.subscriptions.push(vscode.commands.registerCommand('hanul.table.equalWidth', async () => postAction('tableAction', { action: 'equalWidth' })));
+  context.subscriptions.push(vscode.commands.registerCommand('hanul.table.equalHeight', async () => postAction('tableAction', { action: 'equalHeight' })));
+  context.subscriptions.push(vscode.commands.registerCommand('hanul.pageSetup', async () => postAction('pageSetup')));
+  context.subscriptions.push(vscode.commands.registerCommand('hanul.charShape', async () => postAction('charShape')));
+  context.subscriptions.push(vscode.commands.registerCommand('hanul.paraShape', async () => postAction('paraShape')));
+  context.subscriptions.push(vscode.commands.registerCommand('hanul.equation', async () => postAction('equation')));
+  context.subscriptions.push(vscode.commands.registerCommand('hanul.symbols', async () => postAction('symbols')));
+  context.subscriptions.push(vscode.commands.registerCommand('hanul.style', async () => postAction('style')));
+
   if (context.extensionMode !== vscode.ExtensionMode.Production) return { provider };
 }

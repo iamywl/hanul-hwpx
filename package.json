@@ -3,7 +3,7 @@
   "displayName": "Hanul · 한울 HWP/HWPX",
   "description": "한컴 설치 없이 사용하는 로컬 HWP/HWPX 편집기 · 초기 시제품",
   "version": "0.1.0",
-  "publisher": "hanul-local",
+  "publisher": "KodingKO",
   "repository": {
     "type": "git",
     "url": "https://github.com/iamywl/hanul-hwpx.git"
@@ -54,6 +54,265 @@
       {
         "command": "hanul.demo",
         "title": "한울: 예제 문서 만들기"
+      },
+      {
+        "command": "hanul.find",
+        "title": "한울: 문서 내 찾기 (Ctrl+F / Cmd+F)"
+      },
+      {
+        "command": "hanul.table.selectCell",
+        "title": "한울: 표 셀 선택 / 선택 모드 전환 (F5)"
+      },
+      {
+        "command": "hanul.escape",
+        "title": "한울: 선택 해제 (Esc)"
+      },
+      {
+        "command": "hanul.table.resizeWidthNarrow",
+        "title": "한울: 표 너비 줄이기"
+      },
+      {
+        "command": "hanul.table.resizeWidthWide",
+        "title": "한울: 표 너비 늘리기"
+      },
+      {
+        "command": "hanul.table.resizeHeightShort",
+        "title": "한울: 표 높이 줄이기"
+      },
+      {
+        "command": "hanul.table.resizeHeightTall",
+        "title": "한울: 표 높이 늘리기"
+      },
+      {
+        "command": "hanul.table.resizeLocalWidthNarrow",
+        "title": "한울: 해당 셀만 너비 줄이기"
+      },
+      {
+        "command": "hanul.table.resizeLocalWidthWide",
+        "title": "한울: 해당 셀만 너비 늘리기"
+      },
+      {
+        "command": "hanul.table.resizeLocalHeightShort",
+        "title": "한울: 해당 셀만 높이 줄이기"
+      },
+      {
+        "command": "hanul.table.resizeLocalHeightTall",
+        "title": "한울: 해당 셀만 높이 늘리기"
+      },
+      {
+        "command": "hanul.table.resizeBoundaryLeft",
+        "title": "한울: 경계선 왼쪽 이동"
+      },
+      {
+        "command": "hanul.table.resizeBoundaryRight",
+        "title": "한울: 경계선 오른쪽 이동"
+      },
+      {
+        "command": "hanul.table.resizeBoundaryUp",
+        "title": "한울: 경계선 위쪽 이동"
+      },
+      {
+        "command": "hanul.table.resizeBoundaryDown",
+        "title": "한울: 경계선 아래쪽 이동"
+      },
+      {
+        "command": "hanul.table.toggleHandles",
+        "title": "한울: 표 8개 조절점(핸들) 켜기/끄기"
+      },
+      {
+        "command": "hanul.table.cellProps",
+        "title": "한울: 표/셀 속성 (P)"
+      },
+      {
+        "command": "hanul.table.insertRow",
+        "title": "한울: 아래에 줄 추가"
+      },
+      {
+        "command": "hanul.table.deleteRow",
+        "title": "한울: 줄 삭제"
+      },
+      {
+        "command": "hanul.table.insertCol",
+        "title": "한울: 오른쪽에 칸 추가"
+      },
+      {
+        "command": "hanul.table.deleteCol",
+        "title": "한울: 칸 삭제"
+      },
+      {
+        "command": "hanul.table.merge",
+        "title": "한울: 셀 합치기 (M)"
+      },
+      {
+        "command": "hanul.table.split",
+        "title": "한울: 셀 나누기 (S)"
+      },
+      {
+        "command": "hanul.table.equalWidth",
+        "title": "한울: 너비 같게 (W)"
+      },
+      {
+        "command": "hanul.table.equalHeight",
+        "title": "한울: 높이 같게 (H)"
+      },
+      {
+        "command": "hanul.pageSetup",
+        "title": "한울: 편집 용지 (F7)"
+      },
+      {
+        "command": "hanul.charShape",
+        "title": "한울: 글자 모양 (Alt+L)"
+      },
+      {
+        "command": "hanul.paraShape",
+        "title": "한울: 문단 모양 (Alt+T)"
+      },
+      {
+        "command": "hanul.equation",
+        "title": "한울: 수식 편집기 (Ctrl+N,M)"
+      },
+      {
+        "command": "hanul.symbols",
+        "title": "한울: 문자표 (Ctrl+F10)"
+      },
+      {
+        "command": "hanul.style",
+        "title": "한울: 스타일 (F6)"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "hanul.pageSetup",
+        "key": "f7",
+        "when": "activeCustomEditorId == 'hanul.editor'"
+      },
+      {
+        "command": "hanul.charShape",
+        "key": "alt+l",
+        "when": "activeCustomEditorId == 'hanul.editor'"
+      },
+      {
+        "command": "hanul.paraShape",
+        "key": "alt+t",
+        "when": "activeCustomEditorId == 'hanul.editor'"
+      },
+      {
+        "command": "hanul.equation",
+        "key": "ctrl+alt+m",
+        "mac": "cmd+alt+m",
+        "when": "activeCustomEditorId == 'hanul.editor'"
+      },
+      {
+        "command": "hanul.symbols",
+        "key": "ctrl+f10",
+        "mac": "cmd+f10",
+        "when": "activeCustomEditorId == 'hanul.editor'"
+      },
+      {
+        "command": "hanul.style",
+        "key": "f6",
+        "when": "activeCustomEditorId == 'hanul.editor'"
+      },
+      {
+        "command": "hanul.table.toggleHandles",
+        "key": "ctrl+alt+t",
+        "mac": "cmd+alt+t",
+        "when": "activeCustomEditorId == 'hanul.editor'"
+      },
+      {
+        "command": "hanul.find",
+        "key": "cmd+f",
+        "mac": "cmd+f",
+        "when": "activeCustomEditorId == 'hanul.editor'"
+      },
+      {
+        "command": "hanul.find",
+        "key": "ctrl+f",
+        "win": "ctrl+f",
+        "linux": "ctrl+f",
+        "when": "activeCustomEditorId == 'hanul.editor'"
+      },
+      {
+        "command": "hanul.table.selectCell",
+        "key": "f5",
+        "when": "activeCustomEditorId == 'hanul.editor'"
+      },
+      {
+        "command": "hanul.escape",
+        "key": "escape",
+        "when": "activeCustomEditorId == 'hanul.editor'"
+      },
+      {
+        "command": "hanul.table.resizeWidthNarrow",
+        "key": "ctrl+left",
+        "win": "ctrl+left",
+        "linux": "ctrl+left",
+        "mac": "cmd+left",
+        "when": "activeCustomEditorId == 'hanul.editor'"
+      },
+      {
+        "command": "hanul.table.resizeWidthWide",
+        "key": "ctrl+right",
+        "win": "ctrl+right",
+        "linux": "ctrl+right",
+        "mac": "cmd+right",
+        "when": "activeCustomEditorId == 'hanul.editor'"
+      },
+      {
+        "command": "hanul.table.resizeHeightShort",
+        "key": "ctrl+up",
+        "win": "ctrl+up",
+        "linux": "ctrl+up",
+        "mac": "cmd+up",
+        "when": "activeCustomEditorId == 'hanul.editor'"
+      },
+      {
+        "command": "hanul.table.resizeHeightTall",
+        "key": "ctrl+down",
+        "win": "ctrl+down",
+        "linux": "ctrl+down",
+        "mac": "cmd+down",
+        "when": "activeCustomEditorId == 'hanul.editor'"
+      },
+      {
+        "command": "hanul.table.resizeLocalWidthNarrow",
+        "key": "alt+left",
+        "when": "activeCustomEditorId == 'hanul.editor'"
+      },
+      {
+        "command": "hanul.table.resizeLocalWidthWide",
+        "key": "alt+right",
+        "when": "activeCustomEditorId == 'hanul.editor'"
+      },
+      {
+        "command": "hanul.table.resizeLocalHeightShort",
+        "key": "alt+up",
+        "when": "activeCustomEditorId == 'hanul.editor'"
+      },
+      {
+        "command": "hanul.table.resizeLocalHeightTall",
+        "key": "alt+down",
+        "when": "activeCustomEditorId == 'hanul.editor'"
+      },
+      {
+        "command": "hanul.table.resizeBoundaryLeft",
+        "key": "shift+alt+left",
+        "when": "activeCustomEditorId == 'hanul.editor'"
+      },
+      {
+        "command": "hanul.table.resizeBoundaryRight",
+        "key": "shift+alt+right",
+        "when": "activeCustomEditorId == 'hanul.editor'"
+      },
+      {
+        "command": "hanul.table.resizeBoundaryUp",
+        "key": "shift+alt+up",
+        "when": "activeCustomEditorId == 'hanul.editor'"
+      },
+      {
+        "command": "hanul.table.resizeBoundaryDown",
+        "key": "shift+alt+down",
+        "when": "activeCustomEditorId == 'hanul.editor'"
       }
     ],
     "configuration": {
@@ -73,8 +332,12 @@
     "check": "tsc --noEmit",
     "test": "node --test tests/*.test.mjs",
     "test:ui": "node scripts/smoke.mjs",
+    "test:table": "node scripts/test-table-resize.mjs",
+    "test:shortcuts": "node scripts/test-shortcuts.mjs",
     "test:vscode": "node scripts/test-vscode.mjs",
+    "test:agent": "node scripts/autonomous-agent-loop.mjs",
     "preview": "node scripts/preview.mjs",
+    "app": "node scripts/app.mjs",
     "vscode:prepublish": "npm run check && npm run build",
     "package": "vsce package --no-dependencies --allow-missing-repository --out artifacts/hanul-hwpx-0.1.0.vsix"
   },

@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { openDocument } from '../dist/core.mjs';
+import { HwpxBuilder } from '../dist/hwpx-builder.mjs';
+import { compileMarkdownToHwpx } from '../dist/markdown-compiler.mjs';
 
 test('실전 대용량 공모전 공고문 (notice.hwpx) 파싱 검증', () => {
   const filePath = path.resolve('tests/fixtures/contests/notice.hwpx');
@@ -60,4 +62,59 @@ test('tests/fixtures 내 모든 실무 공문서/공모전 파일 전수 호환�
     assert.ok(doc.paragraphs.length > 0, `${file}에서 1개 이상의 문단이 추출되어야 합니다.`);
     assert.ok(doc.fullText.length > 0, `${file}에서 본문 텍스트가 추출되어야 합니다.`);
   }
+});
+
+test('HWPX 서명 및 도장 "글 뒤로(BEHIND_TEXT)" 생성 및 무손실 파싱 검증', () => {
+  const outHwpx = path.resolve('dist/test_signature_behind.hwpx');
+  if (fs.existsSync(outHwpx)) fs.unlinkSync(outHwpx);
+
+  // 1. 임시 서명 이미지 생성 (1x1 PNG)
+  const dummyImg = path.resolve('dist/dummy_stamp.png');
+  const pngBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+  fs.writeFileSync(dummyImg, Buffer.from(pngBase64, 'base64'));
+
+  // 2. HwpxBuilder로 서명 및 "글 뒤로" 이미지 생성
+  const builder = new HwpxBuilder();
+  builder.addHeading('창업지원사업 협약서 및 서명란', 1);
+  builder.addParagraph('본 협약의 성립을 증명하기 위하여 대표자가 서명 및 날인합니다.');
+  builder.addSignature({
+    label: '보 고 자 (동아리 대표) : 홍길동 (서명/인)',
+    imagePath: dummyImg,
+    width: 6000,
+    height: 6000,
+  });
+
+  const hwpxBytes = builder.build();
+  fs.writeFileSync(outHwpx, hwpxBytes);
+
+  // 3. openDocument로 파싱하여 pictures 검증
+  const doc = openDocument(outHwpx);
+  assert.equal(doc.format, 'hwpx');
+  assert.ok(doc.fullText.includes('홍길동'));
+  assert.ok(doc.fullText.includes('(서명/인)'));
+  assert.ok(doc.pictures && doc.pictures.length >= 1, '파싱된 문서에 그림 개체가 포함되어야 합니다.');
+
+  const sigPic = doc.pictures[0];
+  assert.equal(sigPic.isBehindText, true, '서명 이미지는 isBehindText가 true이어야 합니다.');
+  assert.equal(sigPic.textWrap, 'BEHIND_TEXT', '서명 이미지는 textWrap이 BEHIND_TEXT이어야 합니다.');
+  assert.equal(sigPic.treatAsChar, false, '서명 이미지는 treatAsChar가 false이어야 합니다.');
+  assert.equal(sigPic.allowOverlap, true, '서명 이미지는 allowOverlap이 true이어야 합니다.');
+  assert.equal(sigPic.zOrder, -1, '서명 이미지는 zOrder가 -1이어야 합니다.');
+});
+
+test('Markdown 컴파일러 서명 및 "글 뒤로" 문법 컴파일 검증', () => {
+  const outHwpx = path.resolve('dist/test_md_signature.hwpx');
+  if (fs.existsSync(outHwpx)) fs.unlinkSync(outHwpx);
+
+  const dummyImg = path.resolve('dist/dummy_stamp.png');
+  const md = `# 결과보고서\n\n위 내용이 사실임을 확인합니다.\n\n대표자 : 홍길동 (서명/인) ![서명|behind](${dummyImg})\n`;
+  compileMarkdownToHwpx(md, outHwpx);
+
+  const doc = openDocument(outHwpx);
+  assert.equal(doc.format, 'hwpx');
+  assert.ok(doc.fullText.includes('홍길동'));
+  assert.ok(doc.fullText.includes('(서명/인)'));
+  assert.ok(doc.pictures && doc.pictures.length >= 1, '마크다운 서명 이미지가 파싱되어야 합니다.');
+  const pic = doc.pictures[0];
+  assert.equal(pic.isBehindText, true, '마크다운 서명 이미지는 글 뒤로(isBehindText)로 생성되어야 합니다.');
 });

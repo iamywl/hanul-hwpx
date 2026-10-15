@@ -31,5 +31,10 @@ window.__hanulEngine = {
     return () => { off1(); off2(); };
   },
   info() { return { pages: Y.pageCount, format: Y.getSourceFormat(), warnings: Y.getValidationWarnings() }; },
-  svg(page = 0) { return Y.renderPageSvg(page); }
+  svg(page = 0) { return Y.renderPageSvg(page); },
+  getInputHandler() { return Q; },
+  getWasm() { return Y?.doc ?? null; },
+  getEventBus() { return X; },
+  getDispatcher() { return wA; }
 };
+

@@ -8,12 +8,13 @@
 ## 👥 에이전트 조직 및 파이프라인 아키텍처
 
 한울 프로젝트는 AI 에이전트 기반의 2계층 자율 협업 체계로 개발됩니다:
-- **오케스트레이션 계층**: 기획(Planner), 개발(Developer), QA(QA Verifier)
+- **오케스트레이션 계층**: 기획(Planner), UI/UX 디자인(UI/UX Designer), 개발(Developer), QA(QA Verifier)
 - **리버스 엔지니어링 특화 계층**: 바이너리와 포맷을 해독하는 5대 전문 서브 에이전트
 
 ```mermaid
 flowchart TD
     User([사용자 / 메인 오케스트레이터]) --> Planner[📋 기획 에이전트\n.agents/planner.md]
+    Planner --> Designer[🎨 UI/UX 디자인 에이전트\n.agents/ui-ux-designer.md]
     
     subgraph RE_Pipeline [🔬 리버스 엔지니어링 5대 특화 에이전트]
         Planner -->|스펙 분석 & 조사 지시| RE_Decompile[🕵️ 정적 디컴파일 분석\n.agents/re-decompile.md]
@@ -24,9 +25,11 @@ flowchart TD
         RE_Parser -->|바이너리 레코드 전달| RE_AST[🌲 AST 변환 & 매핑\n.agents/re-ast-mapper.md]
     end
     
-    RE_AST -->|정규화된 AST & 파서 코드| Developer[💻 개발 에이전트\n.agents/developer.md]
+    Designer -->|글래스모피즘 & UI/UX 명세| Developer[💻 개발 에이전트\n.agents/developer.md]
+    RE_AST -->|정규화된 AST & 파서 코드| Developer
     Developer -->|크로스플랫폼 코어 & MCP 도구| QA[🛡️ QA & 검증 에이전트\n.agents/qa.md]
     QA -->|라운드트립 / 호환성 피드백| RE_Diff
+    QA -->|시각 검증 피드백| Designer
     QA -->|검증 결과 보고| Developer
     QA -->|최종 릴리즈 승인| User
 ```
@@ -91,6 +94,13 @@ flowchart TD
    - 문서를 수정 후 저장할 때 미편집 영역의 바이트와 구조는 100% 보존되어야 합니다.
 7. **실제 문서 전수 호환성 보장 (Fixtures Ground Truth)**:
    - `tests/fixtures/`에 저장된 실무 공고문, 공모전 신청서, 배포용 문서 등 모든 한글 파일이 에디터에서 왜곡 없이 열리고 저장될 수 있어야 합니다.
+8. **한컴 표준 단축키 및 인터랙션 손맛 100% 사수 원칙 (Ergonomics & Shortcut Fidelity)**:
+   - 한컴오피스 사용자의 수십 년 된 근육 기억(Muscle Memory)을 온전히 존중합니다.
+   - `F7`(편집 용지), `Alt+L`(글자 모양), `Alt+T`(문단 모양), `F6`(스타일), `Ctrl+Alt+M`(수식), `F5`(셀 선택), `Ctrl/Alt+방향키`(표 크기 조절), `M`(합치기), `S`(나누기), `W/H`(너비/높이 같게), `Alt+Shift+E/R`(글자 크기 증감), `Alt+Insert/Delete`(줄칸 추가삭제) 등 핵심 단축키와 리본/눈금자 손맛은 임의로 생략하거나 훼손할 수 없으며, 100% 한컴과 동등하게 반응해야 합니다.
+9. **글래스모피즘 및 무식한 툴바 적층 금지 (Glassmorphism & Zero Visual Waste)**:
+   - 4~5단으로 무식하게 쌓여 화면을 짓누르고 가리는 조잡한 레거시 툴바 배치는 엄격히 금지됩니다.
+   - macOS 네이티브 스타일의 세련된 글래스모피즘(`backdrop-filter: blur(24px) saturate(180%)`, 은은한 림 라이팅, 캡슐형 세그먼트 컨트롤)을 100% 준수합니다.
+   - 표(Table) 등 특정 개체 조작 도구는 고정 적층 바가 아닌, 개체 진입/선택 시에만 나타나는 세련된 **컨텍스트 플로팅 글래스 캡슐(Floating Glass Pill/HUD)**로 일원화합니다.
 
 ---
 
@@ -101,6 +111,7 @@ hanul-hwpx/
 ├── AGENTS.md                     # 에이전트 협업 헌장 (본 문서)
 ├── .agents/
 │   ├── planner.md                # 📋 기획 에이전트 가이드
+│   ├── ui-ux-designer.md         # 🎨 UI/UX 디자인 에이전트 가이드 (글래스모피즘 & Mac HIG)
 │   ├── developer.md              # 💻 개발 에이전트 가이드
 │   ├── qa.md                     # 🛡️ QA & 검증 에이전트 가이드
 │   ├── re-decompile.md           # 🕵️ 정적 디컴파일 분석 에이전트

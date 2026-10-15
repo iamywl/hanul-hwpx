@@ -1,17 +1,824 @@
-:root { color-scheme: light; }
-body { margin: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; font-family: Pretendard, 'Noto Sans KR', sans-serif; }
-#hanul-bar { display: flex; align-items: center; gap: 12px; min-height: 54px; padding: 0 18px; background: #fff; color: #172b45; border-bottom: 1px solid #dce5ee; font-size: 12px; flex-shrink: 0; }
-.hanul-logo { display: grid; place-items: center; width: 27px; height: 27px; border-radius: 8px; color: #fff; background: #2563eb; font-weight: 800; font-size: 17px; }
-#hanul-bar strong { font-size: 16px; letter-spacing: -.7px; }
-#hanul-name { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #52657b; }
-.hanul-tag { border-radius: 5px; background: #eef3fa; padding: 3px 7px; color: #607087; white-space: nowrap; }
-#hanul-state { margin-left: auto; color: #52657b; white-space: nowrap; }
-#hanul-bar button { border: 1px solid #dce5ee; background: #fff; color: #24364b; border-radius: 6px; padding: 7px 10px; cursor: pointer; font: inherit; white-space: nowrap; }
-#hanul-bar button:hover { background: #edf4ff; }
-#hanul-bar button.primary { background: #2563eb; color: #fff; border-color: #2563eb; }
-#hanul-bar button:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
-#hanul-notice { background: #fff5db; color: #78581e; font-size: 12px; padding: 8px 18px; flex-shrink: 0; }
-#hanul-notice:empty { display: none; }
-#studio-root { flex: 1; min-height: 0; width: 100%; }
-[hidden] { display: none !important; }
-@media (max-width: 880px) { .hanul-tag, #hanul-name { display: none; } #hanul-bar { gap: 6px; padding: 0 10px; } #hanul-bar button { padding: 7px; } }
+:root {
+  color-scheme: light dark;
+  --hanul-glass-bg: rgba(255, 255, 255, 0.75);
+  --hanul-glass-border: rgba(255, 255, 255, 0.6);
+  --hanul-glass-shadow: 0 16px 40px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04);
+  --hanul-accent-blue: #2563eb;
+  --hanul-accent-red: #ef4444;
+}
+
+body {
+  margin: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Pretendard Variable', Pretendard, 'SF Pro Text', 'Segoe UI', 'Noto Sans KR', sans-serif;
+  background: var(--vscode-editor-background, #f8fafc);
+  color: var(--vscode-editor-foreground, #0f172a);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* VS Code 중복 상단 바 완전 제거 */
+#hanul-bar {
+  display: none !important;
+}
+
+/* ==========================================================================
+   1. 최상단 메뉴바 글래스모피즘 (macOS Frosted Glass Header)
+   ========================================================================== */
+#menu-bar {
+  background: rgba(255, 255, 255, 0.72) !important;
+  backdrop-filter: blur(24px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.07) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02) !important;
+  height: 36px !important;
+  display: flex !important;
+  align-items: center !important;
+  z-index: 200 !important;
+  padding: 0 10px !important;
+}
+
+#menu-bar .menu-item {
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+#menu-bar .menu-item:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+/* 메뉴바 우측 글래스 컨트롤 영역 */
+.hanul-menu-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  user-select: none;
+}
+
+/* 문서 핵심 단축키 세그먼트 (Apple HIG Segmented Control) */
+.hanul-glass-segment {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 8px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.hanul-glass-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 7px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #334155;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.hanul-glass-pill:hover {
+  background: rgba(255, 255, 255, 0.9);
+  color: #0f172a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.hanul-glass-pill:active {
+  transform: scale(0.97);
+}
+
+.hanul-glass-pill .pill-hotkey {
+  font-size: 9.5px;
+  font-weight: 600;
+  color: #64748b;
+  background: rgba(0, 0, 0, 0.05);
+  padding: 1px 3px;
+  border-radius: 3px;
+}
+
+.hanul-glass-pill .pill-icon {
+  font-weight: 700;
+  color: #2563eb;
+}
+
+/* 상태 뱃지 (Pill Status Badge) */
+.hanul-menu-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: #475569;
+  padding: 3px 9px;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  white-space: nowrap;
+}
+
+.hanul-menu-status .status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  display: inline-block;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
+}
+
+.hanul-menu-status.changed .status-dot {
+  background: #f59e0b;
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.6);
+}
+
+.hanul-menu-status.saving .status-dot {
+  background: #3b82f6;
+  box-shadow: 0 0 6px rgba(59, 130, 246, 0.6);
+  animation: hanul-dot-pulse 1s infinite alternate;
+}
+
+.hanul-menu-status.error .status-dot {
+  background: #ef4444;
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);
+}
+
+@keyframes hanul-dot-pulse {
+  from { opacity: 0.5; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1.15); }
+}
+
+/* 저장 및 다른 이름으로 저장 글래스 버튼 */
+.hanul-glass-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 10px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.85);
+  color: #334155;
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: all 0.15s ease;
+}
+
+.hanul-glass-btn:hover {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.18);
+  color: #0f172a;
+}
+
+.hanul-glass-btn:active {
+  transform: translateY(1px);
+}
+
+.hanul-glass-btn.primary {
+  background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
+  border-color: #1d4ed8;
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35);
+}
+
+.hanul-glass-btn.primary:hover {
+  background: linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.45);
+}
+
+/* ==========================================================================
+   2. 컨텍스트 플로팅 글래스 캡슐 HUD (#hanul-table-bar / #hanul-table-hud)
+   ========================================================================== */
+.hanul-table-hud,
+.hanul-table-bar,
+.hanul-image-hud,
+.hanul-image-bar {
+  position: fixed !important;
+  bottom: 28px !important;
+  left: 50% !important;
+  transform: translateX(-50%) translateY(20px) !important;
+  display: inline-flex !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 6px 14px !important;
+  background: rgba(255, 255, 255, 0.92) !important;
+  backdrop-filter: blur(28px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(190%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.85) !important;
+  border-radius: 9999px !important;
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.16), 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+  z-index: 99999 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  user-select: none !important;
+  max-width: 96vw !important;
+  overflow-x: auto !important;
+}
+
+.hanul-table-hud.is-active,
+.hanul-table-bar.is-active,
+.hanul-image-hud.is-active,
+.hanul-image-bar.is-active {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  transform: translateX(-50%) translateY(0) !important;
+}
+
+/* HUD 세그먼트 그룹 */
+.hud-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0 !important;
+  white-space: nowrap !important;
+}
+
+/* HUD 구분선 */
+.hud-sep {
+  width: 1px;
+  height: 16px;
+  background: rgba(0, 0, 0, 0.1);
+  margin: 0 3px;
+  flex-shrink: 0 !important;
+}
+
+/* HUD Phase 인디케이터 뱃지 버튼 */
+.hanul-hud-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 9999px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(0, 0, 0, 0.04);
+  color: #1e293b;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  transition: all 0.15s ease;
+}
+
+.hanul-hud-badge:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.hud-marker {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.hud-marker.marker-none {
+  background: #94a3b8;
+}
+
+.hud-marker.marker-single {
+  background: #64748b;
+  box-shadow: 0 0 4px rgba(100, 116, 139, 0.5);
+}
+
+.hud-marker.marker-range {
+  background: #ef4444;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.9);
+  animation: hanul-red-pulse 1.2s infinite ease-in-out;
+}
+
+.hud-marker.marker-all {
+  background: #10b981;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.8);
+}
+
+/* HUD 표준 버튼 */
+.hud-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.7);
+  color: #334155;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.hud-btn:hover {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.16);
+  color: #0f172a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.hud-btn:active {
+  transform: scale(0.96);
+}
+
+.hud-btn.mini {
+  padding: 0 5px;
+  font-size: 10.5px;
+}
+
+.hud-btn.accent {
+  background: rgba(37, 99, 235, 0.12);
+  border-color: rgba(37, 99, 235, 0.3);
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+.hud-btn.accent:hover {
+  background: rgba(37, 99, 235, 0.2);
+  border-color: #2563eb;
+  color: #1e40af;
+}
+
+.hud-btn.signature-behind {
+  background: linear-gradient(180deg, rgba(37, 99, 235, 0.14) 0%, rgba(29, 78, 216, 0.22) 100%);
+  border-color: rgba(37, 99, 235, 0.4);
+  color: #1d4ed8;
+  font-weight: 700;
+  box-shadow: 0 0 8px rgba(37, 99, 235, 0.18);
+}
+
+.hud-btn.signature-behind:hover {
+  background: linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%);
+  border-color: #1d4ed8;
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(37, 99, 235, 0.45);
+}
+
+.hud-btn.active {
+  background: #2563eb !important;
+  border-color: #1d4ed8 !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+}
+
+.hud-btn.danger {
+  color: #b91c1c;
+}
+
+.hud-btn.danger:hover {
+  background: #fef2f2;
+  border-color: #fca5a5;
+}
+
+.hud-close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.05);
+  color: #64748b;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-left: 2px;
+}
+
+.hud-close-btn:hover {
+  background: rgba(0, 0, 0, 0.12);
+  color: #0f172a;
+}
+
+/* ==========================================================================
+   3. 한컴 표준 셀 선택 빨간불 인디케이터 (Red Dot Glow Pulse)
+   ========================================================================== */
+.cell-selection-phase-marker {
+  width: 14px !important;
+  height: 14px !important;
+  border-radius: 50% !important;
+  border: 2px solid #ffffff !important;
+  box-sizing: border-box !important;
+  pointer-events: none !important;
+  position: absolute !important;
+  transform: translate(-50%, -50%) !important;
+  z-index: 10 !important;
+  transition: transform 0.15s ease-out, background 0.15s ease-out !important;
+}
+
+.cell-selection-phase-marker--single {
+  background: #475569 !important;
+  box-shadow: 0 0 0 2px #ffffff, 0 2px 6px rgba(0, 0, 0, 0.3) !important;
+}
+
+.cell-selection-phase-marker--range {
+  background: #ef4444 !important; /* 선명한 한컴 빨간불 */
+  box-shadow: 0 0 0 2px #ffffff, 0 0 12px rgba(239, 68, 68, 0.95), 0 0 20px rgba(239, 68, 68, 0.5) !important;
+  animation: hanul-red-pulse 1.2s infinite ease-in-out !important;
+}
+
+@keyframes hanul-red-pulse {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+    box-shadow: 0 0 0 2px #ffffff, 0 0 10px rgba(239, 68, 68, 0.8);
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.28);
+    box-shadow: 0 0 0 2.5px #ffffff, 0 0 18px rgba(239, 68, 68, 1);
+  }
+}
+
+.cell-selection-highlight {
+  background: rgba(59, 130, 246, 0.24) !important;
+  border: 1.5px solid rgba(37, 99, 235, 0.75) !important;
+  border-radius: 2px !important;
+  pointer-events: none !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3) !important;
+}
+
+/* ==========================================================================
+   4. 알림 토스트 (Floating Glass Capsule Toast)
+   ========================================================================== */
+#hanul-notice {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 10000;
+  max-width: 440px;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  color: #1e293b;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.04);
+  padding: 10px 16px;
+  font-size: 12px;
+  line-height: 1.45;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#hanul-notice:empty, #hanul-notice[hidden] {
+  display: none !important;
+}
+
+/* ==========================================================================
+   5. VS Code Dark 모드 글래스모피즘 대응
+   ========================================================================== */
+@media (prefers-color-scheme: dark), body.vscode-dark {
+  body {
+    background: #18181b;
+    color: #e4e4e7;
+  }
+
+  #menu-bar {
+    background: rgba(24, 24, 27, 0.75) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4) !important;
+  }
+
+  #menu-bar .menu-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .hanul-glass-segment {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+
+  .hanul-glass-pill {
+    color: #cbd5e1;
+  }
+
+  .hanul-glass-pill:hover {
+    background: rgba(255, 255, 255, 0.14);
+    color: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  }
+
+  .hanul-glass-pill .pill-hotkey {
+    color: #94a3b8;
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .hanul-menu-status {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.08);
+    color: #94a3b8;
+  }
+
+  .hanul-glass-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.12);
+    color: #e4e4e7;
+  }
+
+  .hanul-glass-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .hanul-table-hud {
+    background: rgba(24, 24, 28, 0.85);
+    border-color: rgba(255, 255, 255, 0.14);
+    box-shadow: 0 20px 48px rgba(0, 0, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+
+  .hud-sep {
+    background: rgba(255, 255, 255, 0.14);
+  }
+
+  .hanul-hud-badge {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #e4e4e7;
+  }
+
+  .hanul-hud-badge:hover {
+    background: rgba(255, 255, 255, 0.14);
+  }
+
+  .hud-btn {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #d4d4d8;
+  }
+
+  .hud-btn:hover {
+    background: rgba(255, 255, 255, 0.14);
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .hud-btn.accent {
+    background: rgba(59, 130, 246, 0.22);
+    border-color: rgba(59, 130, 246, 0.4);
+    color: #93c5fd;
+  }
+
+  .hud-btn.accent:hover {
+    background: rgba(59, 130, 246, 0.32);
+    color: #bfdbfe;
+  }
+
+  .hud-btn.danger {
+    color: #f87171;
+  }
+
+  .hud-btn.danger:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.4);
+  }
+
+  .hud-close-btn {
+    background: rgba(255, 255, 255, 0.08);
+    color: #a1a1aa;
+  }
+
+  .hud-close-btn:hover {
+    background: rgba(255, 255, 255, 0.16);
+    color: #ffffff;
+  }
+
+  #hanul-notice {
+    background: rgba(28, 28, 32, 0.88);
+    border-color: rgba(255, 255, 255, 0.14);
+    color: #e4e4e7;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  }
+}
+
+/* ==========================================================================
+   6. 문서 진단 경고 모달 (Glass Modal)
+   ========================================================================== */
+.hanul-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 20000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.hanul-modal-content {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  color: #1e293b;
+  width: 520px;
+  max-width: 90vw;
+  border-radius: 14px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: hanul-modal-fadein 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes hanul-modal-fadein {
+  from { opacity: 0; transform: scale(0.96) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  background: rgba(248, 250, 252, 0.8);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.modal-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.modal-close-btn {
+  background: none;
+  border: none;
+  font-size: 15px;
+  color: #64748b;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.modal-close-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: #0f172a;
+}
+
+.modal-body {
+  padding: 18px;
+  font-size: 12px;
+  line-height: 1.5;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.modal-intro {
+  margin-bottom: 12px;
+  color: #475569;
+}
+
+.warning-list {
+  background: rgba(241, 245, 249, 0.8);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11.5px;
+}
+
+.warning-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 0;
+}
+
+.warning-key {
+  color: #b45309;
+  font-weight: 500;
+}
+
+.warning-val {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.warning-explanation {
+  background: rgba(239, 246, 255, 0.8);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  color: #1e40af;
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 18px;
+  background: rgba(248, 250, 252, 0.8);
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.modal-btn {
+  padding: 7px 16px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: #ffffff;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.modal-btn.primary {
+  background: #2563eb;
+  border-color: #1d4ed8;
+  color: #ffffff;
+}
+
+.modal-btn.primary:hover {
+  background: #1d4ed8;
+}
+
+@media (prefers-color-scheme: dark), body.vscode-dark {
+  .hanul-modal-content {
+    background: rgba(30, 30, 36, 0.95);
+    color: #e4e4e7;
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+  }
+  .modal-header {
+    background: rgba(24, 24, 28, 0.8);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+  .modal-title {
+    color: #ffffff;
+  }
+  .modal-close-btn {
+    color: #a1a1aa;
+  }
+  .modal-close-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+  }
+  .warning-list {
+    background: rgba(24, 24, 28, 0.8);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+  .warning-key {
+    color: #fbbf24;
+  }
+  .warning-val {
+    color: #cbd5e1;
+  }
+  .warning-explanation {
+    background: rgba(30, 58, 138, 0.3);
+    border-color: rgba(59, 130, 246, 0.35);
+    color: #93c5fd;
+  }
+  .modal-footer {
+    background: rgba(24, 24, 28, 0.8);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+  .modal-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.12);
+    color: #e4e4e7;
+  }
+  .modal-btn.primary {
+    background: #2563eb;
+    border-color: #3b82f6;
+  }
+}
+
+#studio-root {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+:root[data-toolbox-basic=hidden] #icon-toolbar {
+  display: none !important;
+}
+
+#icon-toolbar {
+  z-index: 90;
+  border-bottom: 1px solid var(--vscode-editorGroup-border, rgba(0, 0, 0, 0.08));
+}
+
+#editor-area {
+  position: relative;
+}
