@@ -16,7 +16,7 @@
 
 <br />
 
-<img src="docs/assets/hanul_vscode_preview.png" alt="Hanul VS Code Extension & Desktop App Preview" width="100%" />
+<img src="https://raw.githubusercontent.com/iamywl/hanul-hwpx/main/docs/assets/hanul_vscode_preview.png" alt="Hanul VS Code Extension & Desktop App Preview" width="100%" />
 
 <br />
 
