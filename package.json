@@ -9,6 +9,7 @@
     "url": "https://github.com/iamywl/hanul-hwpx.git"
   },
   "license": "MIT",
+  "icon": "docs/assets/icon.png",
   "engines": {
     "vscode": "^1.95.0"
   },
@@ -339,7 +340,7 @@
     "preview": "node scripts/preview.mjs",
     "app": "node scripts/app.mjs",
     "vscode:prepublish": "npm run check && npm run build",
-    "package": "vsce package --no-dependencies --allow-missing-repository --out artifacts/hanul-hwpx-0.1.0.vsix"
+    "package": "node scripts/package-vsix.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

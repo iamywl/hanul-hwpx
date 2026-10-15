@@ -1,0 +1,75 @@
+name: Publish Extension (Marketplace & GitHub Release)
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      publish_marketplace:
+        description: 'Publish to VS Code Marketplace'
+        required: true
+        type: boolean
+        default: true
+
+jobs:
+  publish:
+    name: Build, Release & Publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Static Analysis & Tests
+        run: |
+          npm run check
+          npm test
+
+      - name: Build Extension
+        run: npm run build
+
+      - name: Extract Version
+        id: meta
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "VSIX Version: ${VERSION}"
+
+      - name: Package VSIX
+        run: npm run package
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/v')
+        with:
+          name: "Hanul v${{ steps.meta.outputs.version }}"
+          files: artifacts/*.vsix
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+
+      - name: Publish to VS Code Marketplace
+        if: ${{ (inputs.publish_marketplace || startsWith(github.ref, 'refs/tags/v')) }}
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          if [ -z "$VSCE_PAT" ]; then
+            echo "::warning::VSCE_PAT secret is not configured in GitHub repository. Skipping marketplace publish."
+            echo "To enable automatic marketplace publishing, please add your Azure DevOps Personal Access Token (PAT) as 'VSCE_PAT' in repository Settings > Secrets and variables > Actions."
+          else
+            echo "Publishing to VS Code Marketplace under publisher 'KodingKO'..."
+            npx @vscode/vsce publish -p "$VSCE_PAT" --packagePath artifacts/hanul-hwpx-${{ steps.meta.outputs.version }}.vsix
+            echo "Successfully published to VS Code Marketplace!"
+          fi

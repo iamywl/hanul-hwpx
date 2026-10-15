@@ -11,3 +11,4 @@ package-lock.json
 dist/*.map
 dist/*.mjs
 .gitignore
+.github/**
