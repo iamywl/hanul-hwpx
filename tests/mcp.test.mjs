@@ -49,14 +49,14 @@ function callMcp(requests) {
   });
 }
 
-test('MCP: tools/list는 15개 도구를 모두 제공해야 합니다', async () => {
+test('MCP: tools/list는 17대 도구를 모두 제공해야 합니다 (누름틀 API 포함)', async () => {
   const responses = await callMcp([
     { jsonrpc: '2.0', id: 1, method: 'tools/list' },
   ]);
 
   assert.equal(responses.length, 1);
   const tools = responses[0].result.tools;
-  assert.equal(tools.length, 15);
+  assert.equal(tools.length, 17);
   const toolNames = tools.map((t) => t.name);
   assert.ok(toolNames.includes('hanul_read_document'));
   assert.ok(toolNames.includes('hanul_inspect_tables'));
@@ -73,6 +73,8 @@ test('MCP: tools/list는 15개 도구를 모두 제공해야 합니다', async (
   assert.ok(toolNames.includes('hanul_insert_image'));
   assert.ok(toolNames.includes('hanul_set_page_layout'));
   assert.ok(toolNames.includes('hanul_append_content'));
+  assert.ok(toolNames.includes('hanul_get_fields'));
+  assert.ok(toolNames.includes('hanul_fill_fields'));
 });
 
 test('MCP: hanul_read_document로 본문 및 마크다운 추출 검증', async () => {
@@ -632,6 +634,130 @@ test('MCP: hanul_insert_image 및 hanul_set_page_layout, hanul_append_content �
   assert.ok(finalContent.includes('종합 확장 테스트 문서'));
   assert.ok(finalContent.includes('2. 추가된 섹션 제목'));
   assert.ok(finalContent.includes('새로운 단락이 성공적으로 덧붙여졌습니다.'));
+});
+
+test('MCP: hanul_get_fields 및 hanul_fill_fields 누름틀(Field) 자동 채우기 검증', async () => {
+  const artifactsDir = path.resolve('artifacts');
+  fs.mkdirSync(artifactsDir, { recursive: true });
+  const formDoc = path.join(artifactsDir, 'test_field_form.hwpx');
+  const filledDoc = path.join(artifactsDir, 'test_field_filled.hwpx');
+
+  // 1. 기본 HWPX 생성
+  await callMcp([
+    {
+      jsonrpc: '2.0',
+      id: 50,
+      method: 'tools/call',
+      params: {
+        name: 'hanul_create_document',
+        arguments: {
+          outputPath: formDoc,
+          title: '지원 신청서 양식',
+          paragraphs: ['기본 안내 문단'],
+        },
+      },
+    },
+  ]);
+
+  // 2. 누름틀(hp:fieldBegin) XML 주입
+  const { unzipSync, zipSync, strToU8, strFromU8 } = await import('fflate');
+  const { DOMParser, XMLSerializer } = await import('@xmldom/xmldom');
+  const buf = fs.readFileSync(formDoc);
+  const zipData = unzipSync(new Uint8Array(buf));
+  const parser = new DOMParser();
+  const secXml = strFromU8(zipData['Contents/section0.xml']);
+  const doc = parser.parseFromString(secXml, 'text/xml');
+  const secElem = doc.getElementsByTagName('hp:sec')[0] || doc.documentElement;
+
+  // 누름틀 문단 2개 추가: 성명, 소속
+  const p1 = doc.createElement('hp:p');
+  const run1 = doc.createElement('hp:run');
+  const fb1 = doc.createElement('hp:fieldBegin');
+  fb1.setAttribute('name', '신청인_성명');
+  fb1.setAttribute('type', 'CLICK_HERE');
+  run1.appendChild(fb1);
+  const t1 = doc.createElement('hp:t');
+  t1.textContent = '홍길동_원문';
+  run1.appendChild(t1);
+  const fe1 = doc.createElement('hp:fieldEnd');
+  run1.appendChild(fe1);
+  p1.appendChild(run1);
+  secElem.appendChild(p1);
+
+  const p2 = doc.createElement('hp:p');
+  const run2 = doc.createElement('hp:run');
+  const fb2 = doc.createElement('hp:fieldBegin');
+  fb2.setAttribute('name', '소속_부서');
+  fb2.setAttribute('type', 'CLICK_HERE');
+  run2.appendChild(fb2);
+  const t2 = doc.createElement('hp:t');
+  t2.textContent = '미정';
+  run2.appendChild(t2);
+  const fe2 = doc.createElement('hp:fieldEnd');
+  run2.appendChild(fe2);
+  p2.appendChild(run2);
+  secElem.appendChild(p2);
+
+  const serializer = new XMLSerializer();
+  zipData['Contents/section0.xml'] = strToU8(serializer.serializeToString(doc));
+  fs.writeFileSync(formDoc, Buffer.from(zipSync(zipData)));
+
+  // 3. MCP hanul_get_fields 호출
+  const getResponses = await callMcp([
+    {
+      jsonrpc: '2.0',
+      id: 51,
+      method: 'tools/call',
+      params: {
+        name: 'hanul_get_fields',
+        arguments: { filePath: formDoc },
+      },
+    },
+  ]);
+
+  assert.equal(getResponses.length, 1);
+  const fields = getResponses[0].result.fields;
+  assert.equal(fields.length, 2);
+  const fieldNames = fields.map((f) => f.name);
+  assert.ok(fieldNames.includes('신청인_성명'));
+  assert.ok(fieldNames.includes('소속_부서'));
+
+  // 4. MCP hanul_fill_fields 호출
+  const fillResponses = await callMcp([
+    {
+      jsonrpc: '2.0',
+      id: 52,
+      method: 'tools/call',
+      params: {
+        name: 'hanul_fill_fields',
+        arguments: {
+          filePath: formDoc,
+          outputPath: filledDoc,
+          data: {
+            신청인_성명: '이순신',
+            소속_부서: '해상방위사령부',
+          },
+        },
+      },
+    },
+    {
+      jsonrpc: '2.0',
+      id: 53,
+      method: 'tools/call',
+      params: {
+        name: 'hanul_read_document',
+        arguments: { filePath: filledDoc },
+      },
+    },
+  ]);
+
+  assert.equal(fillResponses.length, 2);
+  assert.ok(fillResponses[0].result.success);
+  assert.equal(fillResponses[0].result.filledCount, 2);
+
+  const filledText = fillResponses[1].result.content[0].text;
+  assert.ok(filledText.includes('이순신'));
+  assert.ok(filledText.includes('해상방위사령부'));
 });
 
 

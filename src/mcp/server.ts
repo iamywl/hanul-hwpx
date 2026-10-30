@@ -466,6 +466,34 @@ const TOOLS = [
       required: ['filePath'],
     },
   },
+  {
+    name: 'hanul_get_fields',
+    description: 'HWPX 및 HWP 공문서 서식 내의 모든 누름틀(Field) 목록(필드명, 현재 채워진 텍스트, 위치 등)을 조회합니다.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: '분석할 HWP 또는 HWPX 파일의 경로' },
+      },
+      required: ['filePath'],
+    },
+  },
+  {
+    name: 'hanul_fill_fields',
+    description: 'HWPX 공문서 서식 내의 누름틀(Field)에 키-값 데이터(예: 성명, 생년월일, 주소 등)를 자동으로 일괄 채워 넣고 무손실로 저장합니다.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: '양식 HWPX 파일의 경로' },
+        data: {
+          type: 'object',
+          description: '채워 넣을 필드명-값 쌍 (예: {"성명": "홍길동", "직급": "연구원"})',
+          additionalProperties: { type: 'string' },
+        },
+        outputPath: { type: 'string', description: '결과를 저장할 파일 경로 (생략 시 filePath에 덮어쓰기)' },
+      },
+      required: ['filePath', 'data'],
+    },
+  },
 ];
 
 export class HanulMcpServer {
@@ -1358,6 +1386,162 @@ export class HanulMcpServer {
             },
           ],
           success: true,
+          outputPath: outPath,
+          fileSize: stats.size,
+        });
+      }
+
+      if (name === 'hanul_get_fields') {
+        const filePath = path.resolve(args.filePath);
+        const buf = fs.readFileSync(filePath);
+        const docObj = parseDocumentBuffer(buf);
+
+        const fields: Array<{ name: string; text: string; id?: string; type?: string }> = [];
+
+        if (docObj.format === 'hwpx') {
+          const zipData = unzipSync(new Uint8Array(buf));
+          const parser = new DOMParser();
+
+          for (const [entryName, entryBytes] of Object.entries(zipData)) {
+            if (/Contents\/section\d+\.xml$/i.test(entryName)) {
+              const xmlStr = strFromU8(entryBytes);
+              const doc = parser.parseFromString(xmlStr, 'text/xml');
+              const beginNodes = Array.from(doc.getElementsByTagName('hp:fieldBegin')).concat(
+                Array.from(doc.getElementsByTagName('fieldBegin'))
+              );
+
+              for (const begin of beginNodes) {
+                const fName = begin.getAttribute('name') || begin.getAttribute('hp:name') || '';
+                const fId = begin.getAttribute('id') || begin.getAttribute('hp:id') || '';
+                const fType = begin.getAttribute('type') || begin.getAttribute('hp:type') || '';
+
+                // 누름틀 시작부터 끝까지 텍스트 수집
+                let collectedText = '';
+                let curr: any = begin.parentNode;
+                while (curr && curr.nodeName !== 'hp:p' && curr.nodeName !== 'p') {
+                  curr = curr.parentNode;
+                }
+
+                if (curr) {
+                  const tNodes = Array.from(curr.getElementsByTagName('hp:t')).concat(
+                    Array.from(curr.getElementsByTagName('t'))
+                  );
+                  collectedText = tNodes.map((n: any) => n.textContent || '').join(' ').trim();
+                }
+
+                if (fName) {
+                  fields.push({
+                    name: fName,
+                    text: collectedText,
+                    id: fId || undefined,
+                    type: fType || undefined,
+                  });
+                }
+              }
+            }
+          }
+        } else {
+          // HWP 5.x 누름틀 태그 추출
+          const cfb = new CompoundFile(buf);
+          const entries = cfb.listEntries().filter((e) => e.path.toLowerCase().startsWith('bodytext/section'));
+          for (const ent of entries) {
+            const rawStream = cfb.getStream(ent.path);
+            if (!rawStream) continue;
+            // 누름틀 마커 검색
+            const textStr = rawStream.toString('utf16le');
+            const matches = textStr.matchAll(/field:([^\x00-\x1f\s]+)/g);
+            for (const m of matches) {
+              fields.push({ name: m[1], text: '' });
+            }
+          }
+        }
+
+        return this.sendResult(id, {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(fields, null, 2),
+            },
+          ],
+          totalFields: fields.length,
+          fields,
+        });
+      }
+
+      if (name === 'hanul_fill_fields') {
+        const filePath = path.resolve(args.filePath);
+        const outPath = args.outputPath ? path.resolve(args.outputPath) : filePath;
+        const fillData: Record<string, string> = args.data || {};
+
+        const buf = fs.readFileSync(filePath);
+        const zipData = unzipSync(new Uint8Array(buf));
+        const parser = new DOMParser();
+
+        let filledCount = 0;
+        const filledKeys: string[] = [];
+
+        for (const [entryName, entryBytes] of Object.entries(zipData)) {
+          if (/Contents\/section\d+\.xml$/i.test(entryName)) {
+            const xmlStr = strFromU8(entryBytes);
+            const doc = parser.parseFromString(xmlStr, 'text/xml');
+            const beginNodes = Array.from(doc.getElementsByTagName('hp:fieldBegin')).concat(
+              Array.from(doc.getElementsByTagName('fieldBegin'))
+            );
+
+            for (const begin of beginNodes) {
+              const fName = begin.getAttribute('name') || begin.getAttribute('hp:name') || '';
+              if (fName && fillData[fName] !== undefined) {
+                const newVal = String(fillData[fName]);
+                // 부모 p 노드 찾기
+                let pNode: any = begin.parentNode;
+                while (pNode && pNode.nodeName !== 'hp:p' && pNode.nodeName !== 'p') {
+                  pNode = pNode.parentNode;
+                }
+
+                if (pNode) {
+                  const tNodes = Array.from(pNode.getElementsByTagName('hp:t')).concat(
+                    Array.from(pNode.getElementsByTagName('t'))
+                  );
+                  if (tNodes.length > 0) {
+                    (tNodes[0] as any).textContent = newVal;
+                    for (let i = 1; i < tNodes.length; i++) {
+                      (tNodes[i] as any).textContent = '';
+                    }
+                  } else {
+                    const newRun = doc.createElement('hp:run');
+                    const newT = doc.createElement('hp:t');
+                    newT.textContent = newVal;
+                    newRun.appendChild(newT);
+                    pNode.appendChild(newRun);
+                  }
+                  filledCount++;
+                  if (!filledKeys.includes(fName)) filledKeys.push(fName);
+                }
+              }
+            }
+
+            const serializer = new XMLSerializer();
+            zipData[entryName] = strToU8(serializer.serializeToString(doc));
+          }
+        }
+
+        const outZip = zipSync(zipData);
+        fs.writeFileSync(outPath, Buffer.from(outZip));
+        const stats = fs.statSync(outPath);
+
+        const unmappedKeys = Object.keys(fillData).filter((k) => !filledKeys.includes(k));
+
+        return this.sendResult(id, {
+          content: [
+            {
+              type: 'text',
+              text: `누름틀(Field) 자동 채우기 완료: ${filledCount}개 필드 수정됨 (저장: ${outPath})`,
+            },
+          ],
+          success: true,
+          filledCount,
+          filledKeys,
+          unmappedKeys,
           outputPath: outPath,
           fileSize: stats.size,
         });

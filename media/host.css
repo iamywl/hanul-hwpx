@@ -1,9 +1,16 @@
 :root {
   color-scheme: light dark;
-  --hanul-glass-bg: rgba(255, 255, 255, 0.75);
-  --hanul-glass-border: rgba(255, 255, 255, 0.6);
+  --hanul-glass-bg: rgba(255, 255, 255, 0.82);
+  --hanul-glass-bg-subtle: rgba(255, 255, 255, 0.65);
+  --hanul-glass-border: rgba(255, 255, 255, 0.75);
+  --hanul-glass-border-subtle: rgba(0, 0, 0, 0.08);
+  --hanul-glass-rim: inset 0 1px 0 rgba(255, 255, 255, 0.95);
   --hanul-glass-shadow: 0 16px 40px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04);
+  --hanul-text-primary: #0f172a;
+  --hanul-text-secondary: #334155;
+  --hanul-text-muted: #64748b;
   --hanul-accent-blue: #2563eb;
+  --hanul-accent-blue-hover: #1d4ed8;
   --hanul-accent-red: #ef4444;
 }
 
@@ -14,8 +21,8 @@ body {
   flex-direction: column;
   overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, 'Pretendard Variable', Pretendard, 'SF Pro Text', 'Segoe UI', 'Noto Sans KR', sans-serif;
-  background: var(--vscode-editor-background, #f8fafc);
-  color: var(--vscode-editor-foreground, #0f172a);
+  background: var(--vscode-editor-background, #f1f5f9);
+  color: var(--vscode-editor-foreground, var(--hanul-text-primary));
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -26,28 +33,44 @@ body {
 }
 
 /* ==========================================================================
-   1. 최상단 메뉴바 글래스모피즘 (macOS Frosted Glass Header)
+   1. 상단 크롬 헤더 글래스모피즘 (macOS Frosted Glass Header)
    ========================================================================== */
+#studio-header {
+  position: relative;
+  z-index: 100;
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(28px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(190%) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03), inset 0 1px 0 rgba(255, 255, 255, 0.95) !important;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 1단: 최상단 메뉴바 */
 #menu-bar {
-  background: rgba(255, 255, 255, 0.72) !important;
-  backdrop-filter: blur(24px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.07) !important;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02) !important;
-  height: 36px !important;
+  background: transparent !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05) !important;
+  height: 38px !important;
   display: flex !important;
   align-items: center !important;
+  padding: 0 12px !important;
   z-index: 200 !important;
-  padding: 0 10px !important;
 }
 
 #menu-bar .menu-item {
   border-radius: 6px;
+  padding: 4px 8px !important;
+  font-size: 12.5px !important;
+  font-weight: 550 !important;
+  color: var(--hanul-text-primary) !important;
   transition: all 0.15s ease;
+  user-select: none;
 }
 
 #menu-bar .menu-item:hover {
-  background: rgba(0, 0, 0, 0.05);
+  background: rgba(0, 0, 0, 0.06) !important;
+  color: #000000 !important;
 }
 
 /* 메뉴바 우측 글래스 컨트롤 영역 */
@@ -64,33 +87,34 @@ body {
   display: inline-flex;
   align-items: center;
   background: rgba(0, 0, 0, 0.04);
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 8px;
   padding: 2px;
   gap: 2px;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
 .hanul-glass-pill {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  height: 22px;
-  padding: 0 7px;
+  height: 23px;
+  padding: 0 8px;
   border: none;
   border-radius: 6px;
   background: transparent;
-  color: #334155;
-  font-size: 11px;
-  font-weight: 500;
+  color: var(--hanul-text-secondary);
+  font-size: 11.5px;
+  font-weight: 550;
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.15s ease;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .hanul-glass-pill:hover {
-  background: rgba(255, 255, 255, 0.9);
-  color: #0f172a;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--hanul-text-primary);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08), inset 0 1px 0 #ffffff;
 }
 
 .hanul-glass-pill:active {
@@ -98,56 +122,57 @@ body {
 }
 
 .hanul-glass-pill .pill-hotkey {
-  font-size: 9.5px;
+  font-size: 10px;
   font-weight: 600;
-  color: #64748b;
-  background: rgba(0, 0, 0, 0.05);
-  padding: 1px 3px;
-  border-radius: 3px;
+  color: #475569;
+  background: rgba(0, 0, 0, 0.06);
+  padding: 1px 4px;
+  border-radius: 4px;
 }
 
 .hanul-glass-pill .pill-icon {
   font-weight: 700;
-  color: #2563eb;
+  color: var(--hanul-accent-blue);
 }
 
 /* 상태 뱃지 (Pill Status Badge) */
 .hanul-menu-status {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  font-size: 11px;
-  color: #475569;
-  padding: 3px 9px;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 550;
+  color: var(--hanul-text-secondary);
+  padding: 3px 10px;
   border-radius: 9999px;
   background: rgba(0, 0, 0, 0.04);
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.06);
   white-space: nowrap;
 }
 
 .hanul-menu-status .status-dot {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: #10b981;
   display: inline-block;
-  box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.7);
 }
 
 .hanul-menu-status.changed .status-dot {
   background: #f59e0b;
-  box-shadow: 0 0 6px rgba(245, 158, 11, 0.6);
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.7);
 }
 
 .hanul-menu-status.saving .status-dot {
   background: #3b82f6;
-  box-shadow: 0 0 6px rgba(59, 130, 246, 0.6);
+  box-shadow: 0 0 6px rgba(59, 130, 246, 0.7);
   animation: hanul-dot-pulse 1s infinite alternate;
 }
 
 .hanul-menu-status.error .status-dot {
   background: #ef4444;
-  box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.7);
 }
 
 @keyframes hanul-dot-pulse {
@@ -160,25 +185,26 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  height: 24px;
-  padding: 0 10px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  gap: 5px;
+  height: 25px;
+  padding: 0 11px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.85);
-  color: #334155;
-  font-size: 11.5px;
-  font-weight: 500;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--hanul-text-primary);
+  font-size: 12px;
+  font-weight: 550;
   cursor: pointer;
   white-space: nowrap;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .hanul-glass-btn:hover {
   background: #ffffff;
-  border-color: rgba(0, 0, 0, 0.18);
-  color: #0f172a;
+  border-color: rgba(0, 0, 0, 0.2);
+  color: #000000;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
 .hanul-glass-btn:active {
@@ -190,16 +216,194 @@ body {
   border-color: #1d4ed8;
   color: #ffffff;
   font-weight: 600;
-  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35);
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 
 .hanul-glass-btn.primary:hover {
   background: linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%);
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.45);
+  box-shadow: 0 3px 10px rgba(37, 99, 235, 0.45);
 }
 
 /* ==========================================================================
-   2. 컨텍스트 플로팅 글래스 캡슐 HUD (#hanul-table-bar / #hanul-table-hud)
+   2. 기본 아이콘 툴바 글래스모피즘 (#icon-toolbar)
+   ========================================================================== */
+#icon-toolbar {
+  background: rgba(255, 255, 255, 0.72) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06) !important;
+  padding: 4px 10px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  overflow-x: auto !important;
+}
+
+#icon-toolbar .tb-scroll-viewport {
+  background: transparent !important;
+}
+
+#icon-toolbar .tb-group {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 2px !important;
+}
+
+#icon-toolbar .tb-btn {
+  display: inline-flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: 1px solid transparent !important;
+  border-radius: 6px !important;
+  background: transparent !important;
+  color: var(--hanul-text-primary) !important;
+  padding: 3px 5px !important;
+  min-width: 32px !important;
+  cursor: pointer !important;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+#icon-toolbar .tb-btn:hover {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05), inset 0 1px 0 #ffffff !important;
+  transform: translateY(-0.5px) !important;
+}
+
+#icon-toolbar .tb-btn:active {
+  transform: scale(0.96) !important;
+}
+
+#icon-toolbar .tb-label {
+  font-size: 11px !important;
+  font-weight: 550 !important;
+  color: var(--hanul-text-secondary) !important;
+  line-height: 1.15 !important;
+  text-align: center !important;
+  margin-top: 2px !important;
+  letter-spacing: -0.2px !important;
+}
+
+#icon-toolbar .tb-sep {
+  width: 1px !important;
+  height: 22px !important;
+  background: rgba(0, 0, 0, 0.08) !important;
+  margin: 0 4px !important;
+  align-self: center !important;
+}
+
+/* ==========================================================================
+   3. 서식 도구 모음 글래스모피즘 (#style-bar)
+   ========================================================================== */
+#style-bar {
+  background: rgba(255, 255, 255, 0.6) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.07) !important;
+  padding: 4px 10px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  font-size: 12px !important;
+}
+
+#style-bar select.sb-combo,
+#style-bar input.sb-size,
+#style-bar select.sb-ls-select {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  border-radius: 6px !important;
+  color: var(--hanul-text-primary) !important;
+  font-weight: 550 !important;
+  font-size: 12px !important;
+  height: 25px !important;
+  padding: 0 6px !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+  outline: none !important;
+  transition: all 0.15s ease !important;
+}
+
+#style-bar select.sb-combo:focus,
+#style-bar input.sb-size:focus,
+#style-bar select.sb-ls-select:focus {
+  border-color: var(--hanul-accent-blue) !important;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25) !important;
+}
+
+#style-bar .sb-field-label {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: var(--hanul-text-muted) !important;
+  margin-right: 4px !important;
+}
+
+#style-bar .sb-btn {
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  border-radius: 6px !important;
+  background: rgba(255, 255, 255, 0.8) !important;
+  color: var(--hanul-text-primary) !important;
+  height: 25px !important;
+  padding: 0 7px !important;
+  cursor: pointer !important;
+  font-weight: 600 !important;
+  transition: all 0.15s ease !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+}
+
+#style-bar .sb-btn:hover {
+  background: #ffffff !important;
+  border-color: rgba(0, 0, 0, 0.16) !important;
+  color: #000000 !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06) !important;
+}
+
+#style-bar .sb-btn.active,
+#style-bar .sb-btn.selected {
+  background: var(--hanul-accent-blue) !important;
+  border-color: var(--hanul-accent-blue-hover) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35) !important;
+}
+
+/* ==========================================================================
+   4. 에디터 캔버스 본문 영역 가독성 극대화 (#editor-area, #scroll-container)
+   ========================================================================== */
+#editor-area {
+  position: relative !important;
+  flex: 1 !important;
+  min-height: 0 !important;
+  width: 100% !important;
+  background: #eef2f6 !important;
+}
+
+#scroll-container {
+  background: #eef2f6 !important;
+  overflow: auto !important;
+}
+
+/* 문서 페이지 캔버스 종이 질감 및 고품질 그림자 */
+#scroll-content canvas,
+.doc-page {
+  background: #ffffff !important;
+  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.09), 0 2px 8px rgba(0, 0, 0, 0.03) !important;
+  border-radius: 2px !important;
+}
+
+/* 눈금자(Ruler) 글래스 스타일 */
+#h-ruler, #v-ruler {
+  background: rgba(255, 255, 255, 0.9) !important;
+  backdrop-filter: blur(10px) !important;
+}
+
+#ruler-corner {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-right: 1px solid rgba(0, 0, 0, 0.08) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+/* ==========================================================================
+   5. 컨텍스트 플로팅 글래스 캡슐 HUD (#hanul-table-bar / #hanul-image-bar)
    ========================================================================== */
 .hanul-table-hud,
 .hanul-table-bar,
@@ -214,12 +418,12 @@ body {
   align-items: center !important;
   gap: 6px !important;
   padding: 6px 14px !important;
-  background: rgba(255, 255, 255, 0.92) !important;
-  backdrop-filter: blur(28px) saturate(190%) !important;
-  -webkit-backdrop-filter: blur(28px) saturate(190%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.85) !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(32px) saturate(200%) !important;
+  -webkit-backdrop-filter: blur(32px) saturate(200%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.95) !important;
   border-radius: 9999px !important;
-  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.16), 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.16), 0 4px 14px rgba(0, 0, 0, 0.06), inset 0 1px 0 #ffffff !important;
   z-index: 99999 !important;
   opacity: 0 !important;
   pointer-events: none !important;
@@ -227,6 +431,7 @@ body {
   user-select: none !important;
   max-width: 96vw !important;
   overflow-x: auto !important;
+  scrollbar-width: thin !important;
 }
 
 .hanul-table-hud.is-active,
@@ -242,7 +447,7 @@ body {
 .hud-group {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
   flex-shrink: 0 !important;
   white-space: nowrap !important;
 }
@@ -250,8 +455,8 @@ body {
 /* HUD 구분선 */
 .hud-sep {
   width: 1px;
-  height: 16px;
-  background: rgba(0, 0, 0, 0.1);
+  height: 18px;
+  background: rgba(0, 0, 0, 0.12);
   margin: 0 3px;
   flex-shrink: 0 !important;
 }
@@ -261,13 +466,13 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 24px;
-  padding: 0 10px;
+  height: 26px;
+  padding: 0 11px;
   border-radius: 9999px;
   border: 1px solid rgba(0, 0, 0, 0.08);
   background: rgba(0, 0, 0, 0.04);
-  color: #1e293b;
-  font-size: 11.5px;
+  color: var(--hanul-text-primary);
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap !important;
@@ -306,29 +511,31 @@ body {
   box-shadow: 0 0 6px rgba(16, 185, 129, 0.8);
 }
 
-/* HUD 표준 버튼 */
+/* HUD 표준 버튼 (가독성 향상) */
 .hud-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 24px;
-  padding: 0 8px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.7);
-  color: #334155;
-  font-size: 11px;
-  font-weight: 500;
+  height: 26px;
+  padding: 0 9px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--hanul-text-primary);
+  font-size: 11.5px;
+  font-weight: 550;
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .hud-btn:hover {
   background: #ffffff;
-  border-color: rgba(0, 0, 0, 0.16);
-  color: #0f172a;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  border-color: rgba(0, 0, 0, 0.18);
+  color: #000000;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  transform: translateY(-0.5px);
 }
 
 .hud-btn:active {
@@ -336,36 +543,36 @@ body {
 }
 
 .hud-btn.mini {
-  padding: 0 5px;
-  font-size: 10.5px;
+  padding: 0 6px;
+  font-size: 11px;
 }
 
 .hud-btn.accent {
   background: rgba(37, 99, 235, 0.12);
-  border-color: rgba(37, 99, 235, 0.3);
+  border-color: rgba(37, 99, 235, 0.35);
   color: #1d4ed8;
   font-weight: 600;
 }
 
 .hud-btn.accent:hover {
-  background: rgba(37, 99, 235, 0.2);
+  background: rgba(37, 99, 235, 0.22);
   border-color: #2563eb;
   color: #1e40af;
 }
 
 .hud-btn.signature-behind {
-  background: linear-gradient(180deg, rgba(37, 99, 235, 0.14) 0%, rgba(29, 78, 216, 0.22) 100%);
-  border-color: rgba(37, 99, 235, 0.4);
+  background: linear-gradient(180deg, rgba(37, 99, 235, 0.16) 0%, rgba(29, 78, 216, 0.26) 100%);
+  border-color: rgba(37, 99, 235, 0.45);
   color: #1d4ed8;
   font-weight: 700;
-  box-shadow: 0 0 8px rgba(37, 99, 235, 0.18);
+  box-shadow: 0 0 8px rgba(37, 99, 235, 0.2);
 }
 
 .hud-btn.signature-behind:hover {
   background: linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%);
   border-color: #1d4ed8;
   color: #ffffff;
-  box-shadow: 0 0 12px rgba(37, 99, 235, 0.45);
+  box-shadow: 0 0 14px rgba(37, 99, 235, 0.5);
 }
 
 .hud-btn.active {
@@ -382,19 +589,20 @@ body {
 .hud-btn.danger:hover {
   background: #fef2f2;
   border-color: #fca5a5;
+  color: #991b1b;
 }
 
 .hud-close-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   border: none;
   background: rgba(0, 0, 0, 0.05);
   color: #64748b;
-  font-size: 11px;
+  font-size: 12px;
   cursor: pointer;
   transition: all 0.15s ease;
   margin-left: 2px;
@@ -406,7 +614,7 @@ body {
 }
 
 /* ==========================================================================
-   3. 한컴 표준 셀 선택 빨간불 인디케이터 (Red Dot Glow Pulse)
+   6. 한컴 표준 셀 선택 빨간불 인디케이터 (Red Dot Glow Pulse)
    ========================================================================== */
 .cell-selection-phase-marker {
   width: 14px !important;
@@ -452,7 +660,30 @@ body {
 }
 
 /* ==========================================================================
-   4. 알림 토스트 (Floating Glass Capsule Toast)
+   7. 하단 상태 바 (#status-bar) 글래스모피즘
+   ========================================================================== */
+#status-bar {
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border-top: 1px solid rgba(0, 0, 0, 0.08) !important;
+  color: var(--hanul-text-secondary) !important;
+  font-size: 11.5px !important;
+  font-weight: 550 !important;
+  height: 28px !important;
+  padding: 0 12px !important;
+}
+
+#status-bar .stb-item {
+  color: var(--hanul-text-secondary) !important;
+}
+
+#status-bar .stb-divider {
+  background: rgba(0, 0, 0, 0.1) !important;
+}
+
+/* ==========================================================================
+   8. 알림 토스트 (Floating Glass Capsule Toast)
    ========================================================================== */
 #hanul-notice {
   position: fixed;
@@ -460,15 +691,16 @@ body {
   right: 24px;
   z-index: 10000;
   max-width: 440px;
-  background: rgba(255, 255, 255, 0.88);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  color: #1e293b;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(24px) saturate(190%);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
+  color: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.95);
   border-radius: 12px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.04);
-  padding: 10px 16px;
-  font-size: 12px;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.14), 0 2px 8px rgba(0, 0, 0, 0.05);
+  padding: 11px 18px;
+  font-size: 12.5px;
+  font-weight: 550;
   line-height: 1.45;
   display: flex;
   align-items: center;
@@ -482,141 +714,14 @@ body {
 }
 
 /* ==========================================================================
-   5. VS Code Dark 모드 글래스모피즘 대응
-   ========================================================================== */
-@media (prefers-color-scheme: dark), body.vscode-dark {
-  body {
-    background: #18181b;
-    color: #e4e4e7;
-  }
-
-  #menu-bar {
-    background: rgba(24, 24, 27, 0.75) !important;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4) !important;
-  }
-
-  #menu-bar .menu-item:hover {
-    background: rgba(255, 255, 255, 0.08);
-  }
-
-  .hanul-glass-segment {
-    background: rgba(255, 255, 255, 0.06);
-    border-color: rgba(255, 255, 255, 0.08);
-  }
-
-  .hanul-glass-pill {
-    color: #cbd5e1;
-  }
-
-  .hanul-glass-pill:hover {
-    background: rgba(255, 255, 255, 0.14);
-    color: #ffffff;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-  }
-
-  .hanul-glass-pill .pill-hotkey {
-    color: #94a3b8;
-    background: rgba(255, 255, 255, 0.1);
-  }
-
-  .hanul-menu-status {
-    background: rgba(255, 255, 255, 0.06);
-    border-color: rgba(255, 255, 255, 0.08);
-    color: #94a3b8;
-  }
-
-  .hanul-glass-btn {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.12);
-    color: #e4e4e7;
-  }
-
-  .hanul-glass-btn:hover {
-    background: rgba(255, 255, 255, 0.15);
-    color: #ffffff;
-    border-color: rgba(255, 255, 255, 0.2);
-  }
-
-  .hanul-table-hud {
-    background: rgba(24, 24, 28, 0.85);
-    border-color: rgba(255, 255, 255, 0.14);
-    box-shadow: 0 20px 48px rgba(0, 0, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.3);
-  }
-
-  .hud-sep {
-    background: rgba(255, 255, 255, 0.14);
-  }
-
-  .hanul-hud-badge {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.1);
-    color: #e4e4e7;
-  }
-
-  .hanul-hud-badge:hover {
-    background: rgba(255, 255, 255, 0.14);
-  }
-
-  .hud-btn {
-    background: rgba(255, 255, 255, 0.07);
-    border-color: rgba(255, 255, 255, 0.1);
-    color: #d4d4d8;
-  }
-
-  .hud-btn:hover {
-    background: rgba(255, 255, 255, 0.14);
-    color: #ffffff;
-    border-color: rgba(255, 255, 255, 0.2);
-  }
-
-  .hud-btn.accent {
-    background: rgba(59, 130, 246, 0.22);
-    border-color: rgba(59, 130, 246, 0.4);
-    color: #93c5fd;
-  }
-
-  .hud-btn.accent:hover {
-    background: rgba(59, 130, 246, 0.32);
-    color: #bfdbfe;
-  }
-
-  .hud-btn.danger {
-    color: #f87171;
-  }
-
-  .hud-btn.danger:hover {
-    background: rgba(239, 68, 68, 0.2);
-    border-color: rgba(239, 68, 68, 0.4);
-  }
-
-  .hud-close-btn {
-    background: rgba(255, 255, 255, 0.08);
-    color: #a1a1aa;
-  }
-
-  .hud-close-btn:hover {
-    background: rgba(255, 255, 255, 0.16);
-    color: #ffffff;
-  }
-
-  #hanul-notice {
-    background: rgba(28, 28, 32, 0.88);
-    border-color: rgba(255, 255, 255, 0.14);
-    color: #e4e4e7;
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
-  }
-}
-
-/* ==========================================================================
-   6. 문서 진단 경고 모달 (Glass Modal)
+   9. 문서 진단 경고 모달 (Glass Modal)
    ========================================================================== */
 .hanul-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   z-index: 20000;
   display: none;
   align-items: center;
@@ -624,14 +729,14 @@ body {
 }
 
 .hanul-modal-content {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(20px);
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(28px);
   color: #1e293b;
   width: 520px;
   max-width: 90vw;
-  border-radius: 14px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 16px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.8);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -648,20 +753,20 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 14px 18px;
-  background: rgba(248, 250, 252, 0.8);
+  background: rgba(248, 250, 252, 0.85);
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .modal-title {
-  font-size: 13.5px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 650;
   color: #0f172a;
 }
 
 .modal-close-btn {
   background: none;
   border: none;
-  font-size: 15px;
+  font-size: 16px;
   color: #64748b;
   cursor: pointer;
   padding: 4px 8px;
@@ -676,25 +781,26 @@ body {
 
 .modal-body {
   padding: 18px;
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: 12.5px;
+  line-height: 1.55;
   max-height: 60vh;
   overflow-y: auto;
 }
 
 .modal-intro {
   margin-bottom: 12px;
-  color: #475569;
+  color: #334155;
+  font-weight: 500;
 }
 
 .warning-list {
-  background: rgba(241, 245, 249, 0.8);
+  background: rgba(241, 245, 249, 0.85);
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 8px;
   padding: 12px 14px;
   margin-bottom: 14px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 11.5px;
+  font-size: 12px;
 }
 
 .warning-row {
@@ -705,36 +811,36 @@ body {
 
 .warning-key {
   color: #b45309;
-  font-weight: 500;
+  font-weight: 550;
 }
 
 .warning-val {
-  font-weight: 600;
+  font-weight: 650;
   color: #1e293b;
 }
 
 .warning-explanation {
-  background: rgba(239, 246, 255, 0.8);
-  border: 1px solid rgba(59, 130, 246, 0.25);
+  background: rgba(239, 246, 255, 0.85);
+  border: 1px solid rgba(59, 130, 246, 0.3);
   color: #1e40af;
   border-radius: 8px;
   padding: 12px 14px;
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: 12.5px;
+  line-height: 1.55;
 }
 
 .modal-footer {
   display: flex;
   justify-content: flex-end;
   padding: 12px 18px;
-  background: rgba(248, 250, 252, 0.8);
+  background: rgba(248, 250, 252, 0.85);
   border-top: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .modal-btn {
-  padding: 7px 16px;
-  font-size: 12px;
-  font-weight: 500;
+  padding: 7px 18px;
+  font-size: 12.5px;
+  font-weight: 550;
   border-radius: 6px;
   border: 1px solid rgba(0, 0, 0, 0.12);
   background: #ffffff;
@@ -744,62 +850,264 @@ body {
 }
 
 .modal-btn.primary {
-  background: #2563eb;
-  border-color: #1d4ed8;
+  background: var(--hanul-accent-blue);
+  border-color: var(--hanul-accent-blue-hover);
   color: #ffffff;
 }
 
 .modal-btn.primary:hover {
-  background: #1d4ed8;
+  background: var(--hanul-accent-blue-hover);
 }
 
+/* ==========================================================================
+   10. VS Code Dark 모드 글래스모피즘 대응 (완벽한 고대비 가독성)
+   ========================================================================== */
 @media (prefers-color-scheme: dark), body.vscode-dark {
-  .hanul-modal-content {
-    background: rgba(30, 30, 36, 0.95);
-    color: #e4e4e7;
-    border-color: rgba(255, 255, 255, 0.12);
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+  :root {
+    --hanul-text-primary: #f8fafc;
+    --hanul-text-secondary: #e2e8f0;
+    --hanul-text-muted: #94a3b8;
   }
-  .modal-header {
-    background: rgba(24, 24, 28, 0.8);
+
+  body {
+    background: #111216;
+    color: #f8fafc;
+  }
+
+  #studio-header {
+    background: rgba(22, 22, 28, 0.85) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+  }
+
+  #menu-bar .menu-item {
+    color: #f8fafc !important;
+  }
+
+  #menu-bar .menu-item:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+  }
+
+  .hanul-glass-segment {
+    background: rgba(255, 255, 255, 0.06);
     border-color: rgba(255, 255, 255, 0.1);
   }
+
+  .hanul-glass-pill {
+    color: #cbd5e1;
+  }
+
+  .hanul-glass-pill:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  }
+
+  .hanul-glass-pill .pill-hotkey {
+    color: #94a3b8;
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .hanul-menu-status {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #cbd5e1;
+  }
+
+  .hanul-glass-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.14);
+    color: #f8fafc;
+  }
+
+  .hanul-glass-btn:hover {
+    background: rgba(255, 255, 255, 0.16);
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.22);
+  }
+
+  #icon-toolbar {
+    background: rgba(22, 22, 28, 0.75) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  }
+
+  #icon-toolbar .tb-btn {
+    color: #f8fafc !important;
+  }
+
+  #icon-toolbar .tb-btn:hover {
+    background: rgba(255, 255, 255, 0.14) !important;
+    border-color: rgba(255, 255, 255, 0.15) !important;
+  }
+
+  #icon-toolbar .tb-label {
+    color: #cbd5e1 !important;
+  }
+
+  #icon-toolbar .tb-sep {
+    background: rgba(255, 255, 255, 0.12) !important;
+  }
+
+  #style-bar {
+    background: rgba(22, 22, 28, 0.65) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  }
+
+  #style-bar select.sb-combo,
+  #style-bar input.sb-size,
+  #style-bar select.sb-ls-select {
+    background: rgba(30, 30, 38, 0.95) !important;
+    border-color: rgba(255, 255, 255, 0.16) !important;
+    color: #ffffff !important;
+  }
+
+  #style-bar .sb-btn {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    color: #e4e4e7 !important;
+  }
+
+  #style-bar .sb-btn:hover {
+    background: rgba(255, 255, 255, 0.16) !important;
+    color: #ffffff !important;
+  }
+
+  #editor-area {
+    background: #111216 !important;
+  }
+
+  #scroll-container {
+    background: #111216 !important;
+  }
+
+  .hanul-table-hud,
+  .hanul-image-hud {
+    background: rgba(20, 20, 26, 0.94) !important;
+    border-color: rgba(255, 255, 255, 0.16) !important;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7), 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+  }
+
+  .hud-sep {
+    background: rgba(255, 255, 255, 0.16) !important;
+  }
+
+  .hanul-hud-badge {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.12);
+    color: #f8fafc;
+  }
+
+  .hud-btn {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    color: #f1f5f9 !important;
+  }
+
+  .hud-btn:hover {
+    background: rgba(255, 255, 255, 0.16) !important;
+    color: #ffffff !important;
+    border-color: rgba(255, 255, 255, 0.22) !important;
+  }
+
+  .hud-btn.accent {
+    background: rgba(59, 130, 246, 0.25) !important;
+    border-color: rgba(59, 130, 246, 0.45) !important;
+    color: #bfdbfe !important;
+  }
+
+  .hud-btn.accent:hover {
+    background: rgba(59, 130, 246, 0.35) !important;
+    color: #ffffff !important;
+  }
+
+  .hud-btn.danger {
+    color: #fca5a5 !important;
+  }
+
+  .hud-btn.danger:hover {
+    background: rgba(239, 68, 68, 0.22) !important;
+    border-color: rgba(239, 68, 68, 0.45) !important;
+    color: #ffffff !important;
+  }
+
+  #status-bar {
+    background: rgba(22, 22, 28, 0.85) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+    color: #cbd5e1 !important;
+  }
+
+  #status-bar .stb-item {
+    color: #cbd5e1 !important;
+  }
+
+  #status-bar .stb-divider {
+    background: rgba(255, 255, 255, 0.12) !important;
+  }
+
+  #hanul-notice {
+    background: rgba(24, 24, 30, 0.94);
+    border-color: rgba(255, 255, 255, 0.16);
+    color: #f8fafc;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+  }
+
+  .hanul-modal-content {
+    background: rgba(26, 26, 32, 0.96);
+    color: #f8fafc;
+    border-color: rgba(255, 255, 255, 0.14);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7);
+  }
+
+  .modal-header {
+    background: rgba(20, 20, 26, 0.85);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
   .modal-title {
     color: #ffffff;
   }
+
   .modal-close-btn {
-    color: #a1a1aa;
+    color: #94a3b8;
   }
+
   .modal-close-btn:hover {
     background: rgba(255, 255, 255, 0.1);
     color: #ffffff;
   }
+
   .warning-list {
-    background: rgba(24, 24, 28, 0.8);
+    background: rgba(20, 20, 26, 0.85);
     border-color: rgba(255, 255, 255, 0.1);
   }
+
   .warning-key {
     color: #fbbf24;
   }
+
   .warning-val {
-    color: #cbd5e1;
+    color: #e2e8f0;
   }
+
   .warning-explanation {
-    background: rgba(30, 58, 138, 0.3);
-    border-color: rgba(59, 130, 246, 0.35);
-    color: #93c5fd;
+    background: rgba(30, 58, 138, 0.35);
+    border-color: rgba(59, 130, 246, 0.4);
+    color: #bfdbfe;
   }
+
   .modal-footer {
-    background: rgba(24, 24, 28, 0.8);
+    background: rgba(20, 20, 26, 0.85);
     border-color: rgba(255, 255, 255, 0.1);
   }
+
   .modal-btn {
     background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.12);
-    color: #e4e4e7;
+    border-color: rgba(255, 255, 255, 0.14);
+    color: #f8fafc;
   }
+
   .modal-btn.primary {
-    background: #2563eb;
+    background: var(--hanul-accent-blue);
     border-color: #3b82f6;
   }
 }

@@ -28,7 +28,7 @@ flowchart TD
     Designer -->|글래스모피즘 & UI/UX 명세| Developer[💻 개발 에이전트\n.agents/developer.md]
     RE_AST -->|정규화된 AST & 파서 코드| Developer
     Developer -->|코어 엔진 API 전달| MCP_Dev[🔌 MCP 개발 에이전트\n.agents/mcp-developer.md]
-    MCP_Dev -->|한컴 15대 표준 MCP 도구| QA[🛡️ QA & 검증 에이전트\n.agents/qa.md]
+    MCP_Dev -->|한컴 17대 표준 MCP 도구 (누름틀 API 포함)| QA[🛡️ QA & 검증 에이전트\n.agents/qa.md]
     Developer -->|크로스플랫폼 에디터| QA
     QA -->|라운드트립 / 호환성 피드백| RE_Diff
     QA -->|시각 검증 피드백| Designer

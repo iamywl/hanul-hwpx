@@ -91,7 +91,7 @@
 ---
 
 ### 3. 🤖 AI 에이전트를 위한 MCP (Model Context Protocol) 탑재
-Claude Code, Cursor, Antigravity, Claude Desktop 등 최신 AI 도구가 직접 한글 문서를 조작할 수 있는 **10대 핵심 MCP 도구**가 기본 내장되어 있습니다:
+Claude Code, Cursor, Antigravity, Claude Desktop 등 최신 AI 도구가 직접 한글 문서를 조작할 수 있는 **17대 핵심 MCP 표준 도구 (공문서 누름틀 Field API 포함)**가 기본 내장되어 있습니다:
 
 ```mermaid
 flowchart LR
@@ -103,12 +103,19 @@ flowchart LR
 
 | MCP Tool | 설명 |
 |---|---|
+| `hanul_get_fields` | **공문서 서식 누름틀(Field) 목록 및 현재 값 조회** (공공기관 양식의 빈칸 파악) |
+| `hanul_fill_fields` | **누름틀(Field) 자동 채우기** (`{"성명": "홍길동"}` 형태로 공문서/신청서 일괄 완성) |
 | `hanul_read_document` | HWP/HWPX 문서 본문, 구조, 메타데이터를 정규화된 마크다운으로 추출 |
 | `hanul_inspect_tables` | 문서 내 모든 표의 구조, 셀 좌표, 텍스트 및 서식을 JSON으로 정밀 파싱 |
-| `hanul_edit_table_cells` | 지정한 표/셀 좌표에 데이터를 삽입·수정하고 서식을 갱신 |
+| `hanul_modify_table` | 기존 문서 내 표 셀 텍스트 수정 및 새 행(Row) 추가 갱신 |
 | `hanul_create_styled_document` | 제목, 본문, 다단 표, 서명(글 뒤로)이 포함된 고급 규격 HWPX 문서 생성 |
 | `hanul_markdown_to_hwpx` | 마크다운(GFM) 문서를 분석하여 표·카드·서명이 포함된 HWPX로 즉시 컴파일 |
+| `hanul_create_document` | 제목, 문단, 표 데이터를 바탕으로 표준 HWPX 문서 즉시 생성 |
 | `hanul_unlock_document` | **배포용 문서(`ViewText`) AES-128 복호화** 및 편집 가능 HWPX로 승격 |
+| `hanul_find_and_replace` | 문서 내 특정 단어/문구 일괄 치환(Find & Replace) 및 저장 |
+| `hanul_insert_image` | 본문 끝 또는 특정 위치에 이미지/서명(글 뒤로) 삽입 |
+| `hanul_set_page_layout` | 편집 용지 규격(A4 등), 방향(세로/가로), 상하좌우 여백(mm) 변경 |
+| `hanul_append_content` | 기존 문서 마지막에 소제목, 본문 문단들, 표 데이터 덧붙여 확장 |
 | `hanul_search_text` | 문서 내 키워드 검색 및 문단/셀 위치 좌표 반환 |
 | `hanul_extract_images` | HWP/HWPX 내에 임베디드된 BinData 이미지를 원본 포맷으로 추출 |
 | `hanul_get_document_info` | 메타데이터, 배포용 문서 여부, 글 뒤로 서명 개수(`behindTextImageCount`) 진단 |
