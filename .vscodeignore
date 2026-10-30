@@ -9,6 +9,9 @@ artifacts/**
 tsconfig.json
 package-lock.json
 dist/*.map
-dist/*.mjs
+apps/**
+dist/Hanul.app/**
+dist/*.hanul-backup
+dist/*.hwpx
 .gitignore
 .github/**

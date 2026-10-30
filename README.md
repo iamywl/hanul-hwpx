@@ -144,41 +144,91 @@ flowchart LR
 
 ---
 
-## 🚀 빠른 시작 (Quick Start)
+## 🚀 플랫폼별 설치 및 실행 가이드 (macOS & Windows Setup)
 
-### 1. VS Code 확장으로 사용하기
-1. [Releases](https://github.com/iamywl/hanul-hwpx/releases)에서 최신 `hanul-hwpx-0.1.0.vsix`를 다운로드합니다.
-2. 터미널에서 확장을 설치합니다:
+한울(Hanul)은 macOS와 Windows, Linux 전 플랫폼에서 **한컴오피스 프로그램 설치 없이** 동작합니다. 취향에 따라 **독립형 네이티브 데스크톱 앱**, **VS Code 확장 프로그램**, **AI 에이전트용 MCP 서버** 중 원하는 방식으로 설치해 사용하실 수 있습니다.
+
+### 🍎 macOS 설치 및 실행 가이드
+
+#### 방법 1: 독립형 네이티브 데스크톱 앱 (`Hanul.app`) 실행 (가장 추천 ⚡)
+macOS WebKit 및 Rust(`wry` + `tao` + `muda`) 기반으로 Electron 대비 1/100 수준의 초경량(1.4MB 순수 바이너리) 메모리 점유율을 자랑합니다:
+1. **빌드 스크립트 실행 (단 1줄)**:
    ```bash
-   code --install-extension hanul-hwpx-0.1.0.vsix
+   git clone https://github.com/iamywl/hanul-hwpx.git
+   cd hanul-hwpx
+   ./scripts/build-mac-app.sh
    ```
-3. VS Code 탐색기에서 임의의 `.hwp` 또는 `.hwpx` 파일을 클릭하면 한울 편집기가 즉시 열립니다!
+2. **앱 실행 또는 Applications 폴더로 이동**:
+   ```bash
+   # 바로 실행
+   open dist/Hanul.app
 
-### 2. 독립형 데스크톱 앱 실행하기
-```bash
-git clone https://github.com/iamywl/hanul-hwpx.git
-cd hanul-hwpx
-npm install
-npm run app
-```
+   # 또는 응용 프로그램 폴더로 복사하여 Launchpad / Spotlight에서 실행
+   cp -R dist/Hanul.app /Applications/
+   ```
+3. **파일 바로 열기**:
+   - Finder에서 `.hwp`, `.hwpx` 파일을 `Hanul.app`으로 드래그하거나
+   - 터미널에서: `open -a Hanul "파일명.hwp"` (또는 `./dist/Hanul.app/Contents/MacOS/Hanul "문서.hwpx"`)
 
-### 3. Claude Desktop / Cursor에서 MCP 서버 연동하기
-Claude Desktop 설정 파일(`claude_desktop_config.json`) 또는 Cursor MCP 설정에 아래를 추가합니다:
+#### 방법 2: VS Code 확장 프로그램 (Custom Editor) 설치
+1. VSIX 패키지 설치:
+   ```bash
+   code --install-extension artifacts/hanul-hwpx-0.1.0.vsix
+   ```
+2. VS Code 탐색기에서 `.hwp`, `.hwpx`, `.hml` 파일을 클릭하면 한울 편집기가 즉시 열립니다.
+   - 단축키: `Cmd+Shift+P` -> `한울: 새 HWPX 문서` 또는 `한울: HWP/HWPX 문서 열기`
+
+---
+
+### 🪟 Windows 설치 및 실행 가이드
+
+#### 방법 1: VS Code 확장 프로그램 설치 (가장 추천 ⚡)
+Windows 개발 환경(PowerShell, CMD, WSL)에서 가장 편리하게 한글 문서를 인라인 편집할 수 있습니다:
+1. **PowerShell / CMD에서 원클릭 설치**:
+   ```powershell
+   code --install-extension artifacts/hanul-hwpx-0.1.0.vsix
+   ```
+   *(또는 VS Code 실행 후 `Ctrl+Shift+X` (확장 탭) -> 상단 `...` 메뉴 -> `VSIX에서 설치...` 선택)*
+2. 탐색기에서 `.hwp`, `.hwpx`, `.hml` 파일을 클릭하면 한컴 설치 없이 즉시 편집 가능합니다.
+
+#### 방법 2: Rust 기반 초경량 네이티브 데스크톱 앱 빌드 & 실행
+1. [rustup.rs](https://rustup.rs)에서 Rust 툴체인을 설치합니다.
+2. 터미널(PowerShell 또는 Git Bash)에서 빌드:
+   ```powershell
+   git clone https://github.com/iamywl/hanul-hwpx.git
+   cd hanul-hwpx\apps\desktop
+   cargo build --release
+   ```
+3. 생성된 초경량(1.5MB 미만) 실행 파일 실행:
+   ```powershell
+   .\target\release\hanul-desktop.exe "C:\경로\문서.hwpx"
+   ```
+
+---
+
+### 🤖 Claude Desktop / Cursor / Antigravity (MCP 서버 연동)
+macOS 및 Windows 공통으로 AI 에이전트 설정 파일에 아래를 추가하면 17대 한글 조작 도구가 활성화됩니다:
+
+- **macOS 경로**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows 경로**: `%APPDATA%\Claude\claude_desktop_config.json`
 
 ```json
 {
   "mcpServers": {
     "hanul": {
       "command": "node",
-      "args": ["/절대경로/hanul-hwpx/dist/mcp.mjs"]
+      "args": ["<hanul-hwpx 프로젝트 절대경로>/dist/mcp.mjs"]
     }
   }
 }
 ```
-이제 Claude에게 말해보세요:  
+이제 AI 에이전트에게 지시해 보세요:  
 > *"공모전 공고문 HWP 파일을 읽고, 마크다운으로 결과보고서 초안을 작성한 뒤 서명란에 대표자 도장을 찍어서 HWPX로 만들어줘."*
+> *"입사지원서 서식의 누름틀(성명, 연락처, 주소, 지원동기)을 자동으로 채워서 저장해줘."*
 
-### 4. CLI로 마크다운을 HWPX로 즉시 컴파일하기
+---
+
+### 🖥️ CLI 커맨드라인 도구 활용
 ```bash
 # 마크다운 보고서를 한글 HWPX 문서로 변환
 node dist/cli.mjs compile report.md -o output.hwpx

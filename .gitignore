@@ -19,4 +19,5 @@ tests/fixtures/*지원금*
 tests/fixtures/*외주*
 scratch/
 tmp/
+apps/**/target/
 

@@ -34,10 +34,13 @@
         "displayName": "한울 한글 편집기",
         "selector": [
           {
-            "filenamePattern": "*.hwpx"
+            "filenamePattern": "*.{hwpx,HWPX,Hwpx}"
           },
           {
-            "filenamePattern": "*.hwp"
+            "filenamePattern": "*.{hwp,HWP,Hwp}"
+          },
+          {
+            "filenamePattern": "*.{hml,HML,Hml}"
           }
         ],
         "priority": "default"

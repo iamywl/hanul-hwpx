@@ -1,14 +1,22 @@
 (() => {
   'use strict';
   const api = typeof acquireVsCodeApi === 'function' ? acquireVsCodeApi() : window.__previewApi;
-  const base = window.__hanulConfig.base;
+  const base = window.__hanulConfig?.base || '/studio/';
   const originalFetch = window.fetch.bind(window);
   window.fetch = (input, init) => {
-    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
-    const parsed = new URL(url, document.baseURI);
-    if (parsed.pathname.startsWith('/rhwp/')) {
-      const rewritten = new URL(parsed.pathname.slice(6), base).href;
-      return originalFetch(input instanceof Request ? new Request(rewritten, input) : rewritten, init);
+    try {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input?.url;
+      if (url) {
+        const parsed = new URL(url, document.baseURI);
+        if (parsed.pathname.startsWith('/rhwp/')) {
+          const absoluteBase = new URL(base, document.baseURI);
+          const subPath = parsed.pathname.slice(6).replace(/^\/+/, '');
+          const rewritten = new URL(subPath, absoluteBase).href;
+          return originalFetch(input instanceof Request ? new Request(rewritten, input) : rewritten, init);
+        }
+      }
+    } catch (e) {
+      console.warn('[host.fetch] rewrite error:', e);
     }
     return originalFetch(input, init);
   };
@@ -1360,9 +1368,36 @@
       await engine().ready();
       engine().getEventBus?.()?.on('cell-selection-phase-changed', () => updateTableHudState());
       engine().onChange(() => { if (suppress || !loaded) return; version++; state('변경됨 · 저장 필요'); post({ type: 'changed', version }); });
-      // File lifecycle is owned by VS Code. Hide unsupported embedded/browser commands (except file:page-setup).
-      for (const node of document.querySelectorAll('[data-menu="file"], [data-cmd^="file:"], [data-cmd="edit:compare-documents"]')) {
-        if (node.dataset?.cmd === 'file:page-setup' || node.getAttribute?.('data-cmd') === 'file:page-setup') continue;
+      // 파일 메뉴 활성화 및 호스트/데스크톱 IPC 브릿지 연결
+      const fileMenuNode = document.querySelector('[data-menu="file"]');
+      if (fileMenuNode) {
+        fileMenuNode.hidden = false;
+      }
+
+      const bindFileAction = (cmdSelector, actionType) => {
+        document.querySelectorAll(cmdSelector).forEach(el => {
+          el.hidden = false;
+          el.classList.remove('disabled');
+          el.setAttribute('aria-disabled', 'false');
+          el.addEventListener('click', e => {
+            e.preventDefault();
+            e.stopPropagation();
+            post({ type: actionType });
+          });
+        });
+      };
+
+      bindFileAction('[data-cmd="file:open"]', 'open');
+      bindFileAction('[data-cmd="file:new-doc"]', 'new');
+      bindFileAction('[data-cmd="file:save"]', 'save');
+      bindFileAction('[data-cmd="file:save-as"]', 'saveAs');
+      bindFileAction('#hanul-open', 'open');
+      bindFileAction('#hanul-new', 'new');
+      bindFileAction('#hanul-save', 'save');
+      bindFileAction('#hanul-save-as', 'saveAs');
+
+      // 웹 전용 내보내기/비활성 명령만 숨김 처리
+      for (const node of document.querySelectorAll('[data-cmd="file:print-to-pdf"], [data-cmd="file:save-as-hwp"], [data-cmd="file:save-as-hwpx"], [data-cmd="file:export-html"], [data-cmd="file:export-doc"], [data-cmd="edit:compare-documents"]')) {
         node.hidden = true;
       }
       post({ type: 'ready' });

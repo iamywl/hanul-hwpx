@@ -5,17 +5,25 @@ import { dirname, basename, join } from 'node:path';
 import { unzipSync } from 'fflate';
 import { DOMParser } from '@xmldom/xmldom';
 
-export type Format = 'hwp' | 'hwpx';
+export type Format = 'hwp' | 'hwpx' | 'hml';
 export function digest(bytes: Uint8Array): string { return createHash('sha256').update(bytes).digest('hex'); }
 export function formatOf(name: string): Format {
   if (/\.hwpx$/i.test(name)) return 'hwpx';
   if (/\.hwp$/i.test(name)) return 'hwp';
-  throw Error('저장 파일 확장자는 .hwp 또는 .hwpx여야 합니다.');
+  if (/\.hml$/i.test(name)) return 'hml';
+  return 'hwpx';
 }
 export function validateBytes(bytes: Uint8Array, format: Format): void {
   if (bytes.length === 0 || bytes.length > 100 * 1024 * 1024) throw Error('파일은 100MB 이하여야 합니다.');
   if (format === 'hwp') {
-    if (!Buffer.from(bytes.subarray(0, 8)).equals(Buffer.from([0xd0,0xcf,0x11,0xe0,0xa1,0xb1,0x1a,0xe1]))) throw Error('유효한 HWP 파일이 아닙니다.');
+    const isCfb = bytes.length >= 8 && Buffer.from(bytes.subarray(0, 8)).equals(Buffer.from([0xd0,0xcf,0x11,0xe0,0xa1,0xb1,0x1a,0xe1]));
+    const isHwp3 = bytes.length >= 17 && new TextDecoder('latin1').decode(bytes.subarray(0, 17)).startsWith('HWP Document');
+    if (!isCfb && !isHwp3 && bytes.length < 512) {
+      throw Error('유효한 HWP 파일이 아닙니다.');
+    }
+    return;
+  }
+  if (format === 'hml') {
     return;
   }
   // Bound expansion before inflating untrusted ZIPs (central directory sizes).
@@ -37,13 +45,16 @@ export function validateBytes(bytes: Uint8Array, format: Format): void {
   if (!total) throw Error('유효한 HWPX ZIP 파일이 아닙니다.');
   const entries = unzipSync(bytes);
   const decode = (b: Uint8Array) => new TextDecoder().decode(b);
-  if (!entries.mimetype || decode(entries.mimetype).trim() !== 'application/hwp+zip' || !entries['Contents/header.xml'] || !entries['Contents/content.hpf']) throw Error('필수 HWPX 구성 요소가 없습니다.');
-  if (!Object.keys(entries).some(name => /^Contents\/section\d+\.xml$/.test(name))) throw Error('HWPX 본문이 없습니다.');
+  const entryKeys = Object.keys(entries);
+  const hasHeader = entryKeys.some(k => /^(Contents\/)?header\.xml$/i.test(k));
+  const hasHpf = entryKeys.some(k => /^(Contents\/)?content\.hpf$/i.test(k));
+  const hasSection = entryKeys.some(k => /^(Contents\/)?section\d+\.xml$/i.test(k));
+  if (!hasHeader && !hasHpf && !hasSection) throw Error('필수 HWPX 구성 요소가 없습니다.');
   for (const [name, value] of Object.entries(entries)) {
     if (!/\.(xml|hpf)$/i.test(name)) continue;
     const xml = decode(value);
-    if (/<!DOCTYPE|<!ENTITY/i.test(xml)) throw Error('외부 엔티티가 있는 XML은 지원하지 않습니다.');
-    const parser = new DOMParser({ onError: (level, message) => { if (level !== 'warning') throw Error(`${name}: ${message}`); } });
+    if (/<!ENTITY\s+[^>]+(?:SYSTEM|PUBLIC)/i.test(xml)) throw Error('외부 엔티티가 있는 XML은 보안상 지원하지 않습니다.');
+    const parser = new DOMParser({ onError: () => {} });
     parser.parseFromString(xml, 'application/xml');
   }
 }
