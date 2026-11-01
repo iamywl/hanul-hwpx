@@ -338,6 +338,7 @@
     "test:ui": "node scripts/smoke.mjs",
     "test:table": "node scripts/test-table-resize.mjs",
     "test:shortcuts": "node scripts/test-shortcuts.mjs",
+    "test:screenshots": "node scripts/capture-all-modals.mjs",
     "test:vscode": "node scripts/test-vscode.mjs",
     "test:agent": "node scripts/autonomous-agent-loop.mjs",
     "preview": "node scripts/preview.mjs",

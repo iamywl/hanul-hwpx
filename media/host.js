@@ -148,6 +148,9 @@
     }
   };
 
+  window.__hanulShowWarningModal = showWarningModal;
+  window.__hanulNotice = notice;
+
   const post = message => api.postMessage(message);
   const fail = error => { state('작업 실패'); notice(String(error)); post({ type: 'error', error: String(error) }); };
 
