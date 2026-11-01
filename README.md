@@ -29,7 +29,7 @@
 
 <br />
 
-[프로젝트 취지](#-프로젝트-취지--비전) · [현재 구현 현황](#-현재-구현-현황-및-핵심-기능) · [MCP 아키텍처](#-ai-에이전트를-위한-mcp-model-context-protocol-탑재) · [빠른 시작](#-빠른-시작-quick-start) · [기여하기](#-프로젝트-참여--기여-call-for-contributors)
+[프로젝트 취지](#-프로젝트-취지--비전) · [현재 구현 현황](#-현재-구현-현황-및-핵심-기능) · [📊 한컴 표준 기능 명세 & 추적 매트릭스](docs/SPEC_AND_TRACKING_MATRIX.md) · [MCP 아키텍처](#-ai-에이전트를-위한-mcp-model-context-protocol-탑재) · [설치 가이드](#-플랫폼별-설치-및-실행-가이드-macos--windows-setup) · [기여하기](#-프로젝트-참여--기여-call-for-contributors)
 
 </div>
 
