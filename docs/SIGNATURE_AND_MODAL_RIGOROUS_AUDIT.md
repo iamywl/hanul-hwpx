@@ -161,21 +161,21 @@ pie title 15종 모달 다이얼로그 기능 동작 현황
 
 | 번호 | 다이얼로그명 | 단축키 / 명령 | 스크린샷 자산 | 실제 동작 판정 | 상세 실측 결과 및 결함 내용 |
 |:---:|:---|:---|:---|:---:|:---|
-| 01 | 메인 에디터 화면 | - | [`01_main_editor_ui.png`](./screenshots/01_main_editor_ui.png) | 🟢 통과 | Frosted Glass 헤더, 1단 리본 캡슐, A4 캔버스 정상 |
-| 02 | 편집 용지 | `F7` | [`02_page_setup_f7.png`](./screenshots/02_page_setup_f7.png) | 🟢 통과 | 여백 변경 시 WASM `PageDef` 즉각 갱신 확인 |
-| 03 | 글자 모양 | `Alt+L` | [`03_char_shape_alt_l.png`](./screenshots/03_char_shape_alt_l.png) | 🟢 통과 | 크기, 글꼴, 자간 변경 시 새 `charShapeId` 등록 정상 |
-| 04 | 문단 모양 | `Alt+T` | [`04_para_shape_alt_t.png`](./screenshots/04_para_shape_alt_t.png) | 🟡 부분통과 | UI 4개 탭 표출되나, 커서 문단 정렬 적용 시 동기화 누락 |
-| 05 | 스타일 | `F6` | [`05_style_dialog_f6.png`](./screenshots/05_style_dialog_f6.png) | 🟡 부분통과 | 기존 스타일 목록 확인 가능, 신규 스타일 등록은 불완전 |
-| 06 | 수식 편집기 | `Ctrl+Alt+M` | [`06_equation_ctrl_alt_m.png`](./screenshots/06_equation_ctrl_alt_m.png) | 🟡 부분통과 | 수식 모달 표출되나 복잡 수식의 Skia 벡터 렌더링 간헐 실패 |
-| 07 | 문자표 | `Ctrl+F10` | [`07_symbols_ctrl_f10.png`](./screenshots/07_symbols_ctrl_f10.png) | 🟢 통과 | 유니코드 특수문자 선택 및 본문 삽입 정상 |
-| 08 | 찾기 및 바꾸기 | `Ctrl+F2` | [`08_find_replace_ctrl_f.png`](./screenshots/08_find_replace_ctrl_f.png) | 🟢 통과 | 본문 키워드 탐색 및 치환 정상 (단축키는 `Ctrl+H`와 혼선) |
-| 09 | 표 만들기 | `Ctrl+N,T` | [`09_table_create_dialog.png`](./screenshots/09_table_create_dialog.png) | 🟢 통과 | 줄/칸 수, 여백 지정 후 삽입 시 테이블 생성 정상 |
-| 10 | 표 플로팅 HUD | 표 진입 | [`10_table_floating_glass_hud.png`](./screenshots/10_table_floating_glass_hud.png) | 🟢 통과 | 글래스모피즘 캡슐, `F5`, `W/H/M/S/A` 단축키 힌트 완비 |
-| 11 | 표/셀 속성 | `P` | [`11_table_cell_props_p.png`](./screenshots/11_table_cell_props_p.png) | 🟢 통과 | 셀 크기, 여백, 정렬 속성 대화상자 연동 정상 |
-| 12 | 셀 테두리/배경 | `L` / `C` | [`12_table_border_bg.png`](./screenshots/12_table_border_bg.png) | 🟢 통과 | 테두리 두께, 색상, 셀 배경 채우기 적용 정상 |
-| 13 | 줄/칸 추가·삭제 | `Alt+Insert` | [`13_table_insert_row_col.png`](./screenshots/13_table_insert_row_col.png) | 🟢 통과 | 선택 방향(위/아래/왼쪽/오른쪽) 행열 조작 정상 |
-| 14 | 계산식 | `Ctrl+N,F` | [`14_table_formula_dialog.png`](./screenshots/14_table_formula_dialog.png) | 🟢 통과 | SUM, AVERAGE 블록 연산 정상 |
-| 15 | 문서 진단 모달 | - | [`15_doc_diagnosis_modal.png`](./screenshots/15_doc_diagnosis_modal.png) | 🟢 통과 | lineseg 누락 등 비치명적 경고 클릭 시 상세 뷰어 표출 |
+| 01 | 메인 에디터 화면 | - | [`01_main_editor_ui.png`](./assets/screenshots/01_main_editor_ui.png) | 🟢 통과 | Frosted Glass 헤더, 1단 리본 캡슐, A4 캔버스 정상 |
+| 02 | 편집 용지 | `F7` | [`02_page_setup_f7.png`](./assets/screenshots/02_page_setup_f7.png) | 🟢 통과 | 여백 변경 시 WASM `PageDef` 즉각 갱신 확인 |
+| 03 | 글자 모양 | `Alt+L` | [`03_char_shape_alt_l.png`](./assets/screenshots/03_char_shape_alt_l.png) | 🟢 통과 | 크기, 글꼴, 자간 변경 시 새 `charShapeId` 등록 정상 |
+| 04 | 문단 모양 | `Alt+T` | [`04_para_shape_alt_t.png`](./assets/screenshots/04_para_shape_alt_t.png) | 🟡 부분통과 | UI 4개 탭 표출되나, 커서 문단 정렬 적용 시 동기화 누락 |
+| 05 | 스타일 | `F6` | [`05_style_dialog_f6.png`](./assets/screenshots/05_style_dialog_f6.png) | 🟡 부분통과 | 기존 스타일 목록 확인 가능, 신규 스타일 등록은 불완전 |
+| 06 | 수식 편집기 | `Ctrl+Alt+M` | [`06_equation_ctrl_alt_m.png`](./assets/screenshots/06_equation_ctrl_alt_m.png) | 🟡 부분통과 | 수식 모달 표출되나 복잡 수식의 Skia 벡터 렌더링 간헐 실패 |
+| 07 | 문자표 | `Ctrl+F10` | [`07_symbols_ctrl_f10.png`](./assets/screenshots/07_symbols_ctrl_f10.png) | 🟢 통과 | 유니코드 특수문자 선택 및 본문 삽입 정상 |
+| 08 | 찾기 및 바꾸기 | `Ctrl+F2` | [`08_find_replace_ctrl_f.png`](./assets/screenshots/08_find_replace_ctrl_f.png) | 🟢 통과 | 본문 키워드 탐색 및 치환 정상 (단축키는 `Ctrl+H`와 혼선) |
+| 09 | 표 만들기 | `Ctrl+N,T` | [`09_table_create_dialog.png`](./assets/screenshots/09_table_create_dialog.png) | 🟢 통과 | 줄/칸 수, 여백 지정 후 삽입 시 테이블 생성 정상 |
+| 10 | 표 플로팅 HUD | 표 진입 | [`10_table_floating_glass_hud.png`](./assets/screenshots/10_table_floating_glass_hud.png) | 🟢 통과 | 글래스모피즘 캡슐, `F5`, `W/H/M/S/A` 단축키 힌트 완비 |
+| 11 | 표/셀 속성 | `P` | [`11_table_cell_props_p.png`](./assets/screenshots/11_table_cell_props_p.png) | 🟢 통과 | 셀 크기, 여백, 정렬 속성 대화상자 연동 정상 |
+| 12 | 셀 테두리/배경 | `L` / `C` | [`12_table_border_bg.png`](./assets/screenshots/12_table_border_bg.png) | 🟢 통과 | 테두리 두께, 색상, 셀 배경 채우기 적용 정상 |
+| 13 | 줄/칸 추가·삭제 | `Alt+Insert` | [`13_table_insert_row_col.png`](./assets/screenshots/13_table_insert_row_col.png) | 🟢 통과 | 선택 방향(위/아래/왼쪽/오른쪽) 행열 조작 정상 |
+| 14 | 계산식 | `Ctrl+N,F` | [`14_table_formula_dialog.png`](./assets/screenshots/14_table_formula_dialog.png) | 🟢 통과 | SUM, AVERAGE 블록 연산 정상 |
+| 15 | 문서 진단 모달 | - | [`15_doc_diagnosis_modal.png`](./assets/screenshots/15_doc_diagnosis_modal.png) | 🟢 통과 | lineseg 누락 등 비치명적 경고 클릭 시 상세 뷰어 표출 |
 
 ---
 

@@ -29,7 +29,7 @@
 
 <br />
 
-[프로젝트 취지](#-프로젝트-취지--비전) · [현재 구현 현황](#-현재-구현-현황-및-핵심-기능) · [📊 한컴 표준 기능 명세 & 추적 매트릭스](docs/SPEC_AND_TRACKING_MATRIX.md) · [MCP 아키텍처](#-ai-에이전트를-위한-mcp-model-context-protocol-탑재) · [설치 가이드](#-플랫폼별-설치-및-실행-가이드-macos--windows-setup) · [기여하기](#-프로젝트-참여--기여-call-for-contributors)
+[프로젝트 취지](#-프로젝트-취지--비전) · [현재 구현 현황](#-현재-구현-현황-및-핵심-기능) · [📊 한컴 표준 명세 & 추적 매트릭스](docs/SPEC_AND_TRACKING_MATRIX.md) · [🔬 서명/모달 심층 감사 보고서](docs/SIGNATURE_AND_MODAL_RIGOROUS_AUDIT.md) · [📸 실측 스크린샷 갤러리](#-한컴-uiux-실측-스크린샷-및-모달-감사-자산) · [설치 가이드](#-플랫폼별-설치-및-실행-가이드-macos--windows-setup) · [기여하기](#-프로젝트-참여--기여-call-for-contributors)
 
 </div>
 
@@ -141,6 +141,42 @@ flowchart LR
 ### 6. 🌐 Zero OS Lock-in (macOS · Linux · Windows)
 - 윈도우 전용 OLE/COM, Win32 DLL 의존성을 100% 배제.
 - 순수 TypeScript, WebAssembly, 표준 웹 기술로 구현되어 운영체제에 상관없이 완벽하게 동일한 결과물 보장.
+
+---
+
+## 📸 한컴 UI/UX 실측 스크린샷 및 모달 감사 자산 (Visual Ground Truth)
+
+한울 프로젝트는 추측이나 표면적인 목업에 의존하지 않고, **바이트 단위 검증과 2x Retina 실측 스크린샷 캡처를 통한 엄밀 감사 체계**를 운영합니다.
+
+> 📊 **전수 추적 매트릭스 (142개 항목)**: [`docs/SPEC_AND_TRACKING_MATRIX.md`](docs/SPEC_AND_TRACKING_MATRIX.md)  
+> 🔬 **서명/도장 BehindText 및 15종 모달 심층 감사 보고서**: [`docs/SIGNATURE_AND_MODAL_RIGOROUS_AUDIT.md`](docs/SIGNATURE_AND_MODAL_RIGOROUS_AUDIT.md)
+
+### 1. 15종 모달 다이얼로그 전수 실측 스크린샷 갤러리
+
+| 번호 | 다이얼로그명 | 단축키 / 명령 | 스크린샷 자산 링크 | 실측 판정 | 핵심 비고 |
+|:---:|:---|:---|:---:|:---:|:---|
+| 01 | **메인 에디터 화면** | - | [`01_main_editor_ui.png`](docs/assets/screenshots/01_main_editor_ui.png) | 🟢 통과 | Frosted Glass 헤더, 1단 리본 캡슐, A4 캔버스 |
+| 02 | **편집 용지** | `F7` | [`02_page_setup_f7.png`](docs/assets/screenshots/02_page_setup_f7.png) | 🟢 통과 | 여백 변경 시 WASM PageDef 즉각 갱신 확인 |
+| 03 | **글자 모양** | `Alt+L` | [`03_char_shape_alt_l.png`](docs/assets/screenshots/03_char_shape_alt_l.png) | 🟢 통과 | 크기, 글꼴, 자간 변경 시 새 charShapeId 등록 정상 |
+| 04 | **문단 모양** | `Alt+T` | [`04_para_shape_alt_t.png`](docs/assets/screenshots/04_para_shape_alt_t.png) | 🟡 부분통과 | UI 4개 탭 표출되나, 커서 문단 정렬 적용 시 동기화 보강 중 |
+| 05 | **스타일** | `F6` | [`05_style_dialog_f6.png`](docs/assets/screenshots/05_style_dialog_f6.png) | 🟡 부분통과 | 기존 스타일 목록 확인 가능, 신규 스타일 등록은 불완전 |
+| 06 | **수식 편집기** | `Ctrl+Alt+M` | [`06_equation_ctrl_alt_m.png`](docs/assets/screenshots/06_equation_ctrl_alt_m.png) | 🟡 부분통과 | 수식 모달 표출되나 복잡 수식의 Skia 벡터 렌더링 간헐 실패 |
+| 07 | **문자표** | `Ctrl+F10` | [`07_symbols_ctrl_f10.png`](docs/assets/screenshots/07_symbols_ctrl_f10.png) | 🟢 통과 | 유니코드 특수문자 선택 및 본문 삽입 정상 |
+| 08 | **찾기 및 바꾸기** | `Ctrl+F2` | [`08_find_replace_ctrl_f.png`](docs/assets/screenshots/08_find_replace_ctrl_f.png) | 🟢 통과 | 본문 키워드 탐색 및 치환 정상 (단축키는 Ctrl+H와 혼선) |
+| 09 | **표 만들기** | `Ctrl+N,T` | [`09_table_create_dialog.png`](docs/assets/screenshots/09_table_create_dialog.png) | 🟢 통과 | 줄/칸 수, 여백 지정 후 삽입 시 테이블 생성 정상 |
+| 10 | **표 플로팅 HUD** | 표 진입 | [`10_table_floating_glass_hud.png`](docs/assets/screenshots/10_table_floating_glass_hud.png) | 🟢 통과 | 글래스모피즘 캡슐, F5, W/H/M/S/A 단축키 힌트 완비 |
+| 11 | **표/셀 속성** | `P` | [`11_table_cell_props_p.png`](docs/assets/screenshots/11_table_cell_props_p.png) | 🟢 통과 | 셀 크기, 여백, 정렬 속성 대화상자 연동 정상 |
+| 12 | **셀 테두리/배경** | `L` / `C` | [`12_table_border_bg.png`](docs/assets/screenshots/12_table_border_bg.png) | 🟢 통과 | 테두리 두께, 색상, 셀 배경 채우기 적용 정상 |
+| 13 | **줄/칸 추가·삭제**| `Alt+Insert`| [`13_table_insert_row_col.png`](docs/assets/screenshots/13_table_insert_row_col.png)| 🟢 통과 | 선택 방향(위/아래/왼쪽/오른쪽) 행열 조작 정상 |
+| 14 | **계산식** | `Ctrl+N,F` | [`14_table_formula_dialog.png`](docs/assets/screenshots/14_table_formula_dialog.png) | 🟢 통과 | SUM, AVERAGE 블록 연산 정상 |
+| 15 | **문서 진단 모달** | - | [`15_doc_diagnosis_modal.png`](docs/assets/screenshots/15_doc_diagnosis_modal.png) | 🟢 통과 | lineseg 누락 등 비치명적 경고 클릭 시 상세 뷰어 표출 |
+
+### 2. 서명/도장 「글 뒤로(BehindText)」 복합 캔버스 렌더링 검증
+
+| 검증 항목 | 실측 스크린샷 | 실측 판정 | 핵심 감사 내용 |
+|:---|:---:|:---:|:---|
+| **서명/도장 글 뒤로 배치** | [`signature_behind_rendered.png`](docs/assets/screenshots/signature_behind_rendered.png) | 🟡 부분통과 (결함추적) | WASM 다중 캔버스(zIndex:1 도장, zIndex:2 텍스트) 적층 렌더링 및 SVG 정상.<br>⚠️ **치명적 결함 규명**: `Yu()` 히트테스트 단락 가로챔으로 마우스 재선택 불가(Selection Trap). F11 개체선택 모드 구현 P0 배치 |
+| **실제 금융위 HWPX 공문서** | [`fsc_fund_report_rendered.png`](docs/assets/screenshots/fsc_fund_report_rendered.png) | 🟢 통과 | 다중 이미지, 표, 복합 서식이 포함된 금융위원회 실무 공문서 무손실 렌더링 확인 |
 
 ---
 
