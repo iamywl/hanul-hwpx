@@ -26,6 +26,15 @@ export async function startPreview(port = 4317) {
         await mkdir('.preview', { recursive: true }); await writeFile('.preview/preview.hwpx', bytes);
         response.end('ok'); return;
       }
+      if (url.pathname === '/api/file' && request.method === 'GET') {
+        const targetPath = url.searchParams.get('path');
+        if (targetPath) {
+          const data = await readFile(targetPath);
+          response.setHeader('Content-Type', 'application/octet-stream');
+          response.end(data);
+          return;
+        }
+      }
       const relative = url.pathname.startsWith('/studio/') ? `vendor/studio/${url.pathname.slice(8)}` : url.pathname.startsWith('/media/') ? `media/${url.pathname.slice(7)}` : url.pathname.startsWith('/rhwp/') ? `vendor/studio/${url.pathname.slice(6)}` : '';
       const path = resolve(root, relative);
       if (!relative || !path.startsWith(root + sep)) { response.writeHead(404); response.end(); return; }
