@@ -26,7 +26,7 @@ export async function startPreview(port = 4317) {
         await mkdir('.preview', { recursive: true }); await writeFile('.preview/preview.hwpx', bytes);
         response.end('ok'); return;
       }
-      const relative = url.pathname.startsWith('/studio/') ? `vendor/studio/${url.pathname.slice(8)}` : url.pathname.startsWith('/media/') ? `media/${url.pathname.slice(7)}` : '';
+      const relative = url.pathname.startsWith('/studio/') ? `vendor/studio/${url.pathname.slice(8)}` : url.pathname.startsWith('/media/') ? `media/${url.pathname.slice(7)}` : url.pathname.startsWith('/rhwp/') ? `vendor/studio/${url.pathname.slice(6)}` : '';
       const path = resolve(root, relative);
       if (!relative || !path.startsWith(root + sep)) { response.writeHead(404); response.end(); return; }
       const types = { '.js': 'text/javascript', '.css': 'text/css', '.wasm': 'application/wasm', '.woff2': 'font/woff2', '.svg': 'image/svg+xml' };

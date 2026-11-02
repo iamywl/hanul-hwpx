@@ -364,13 +364,362 @@
   };
   window.__hanulFormatCopy = performFormatCopyInteractive;
 
+  // --- 한컴 표준 개체선택(F11) 및 BehindText(글 뒤로) 선택 결함 해결 패치 ---
+  const setupBehindTextHitTestPatch = () => {
+    const ih = engine()?.getInputHandler?.();
+    if (!ih || ih.__behindTextPatched) return;
+    ih.__behindTextPatched = true;
+
+    const originalFind = ih.findPictureAtClick;
+    ih.findPictureAtClick = function(pageIdx, x, y) {
+      const isAltHeld = !!window.__hanulAltKeyHeld;
+      const isObjMode = !!window.__hanulObjectSelectionMode;
+
+      const wasm = this.wasm || engine()?.getWasm?.();
+      // Alt가 눌렸거나 F11 개체선택 모드인 경우: 뒤에 배치된 BehindText 개체를 최우선 탐색
+      if (wasm && (isAltHeld || isObjMode)) {
+        try {
+          const raw = wasm.getPageControlLayout(pageIdx);
+          const layout = typeof raw === 'string' ? JSON.parse(raw) : raw;
+          for (const c of (layout?.controls || [])) {
+            if (x >= c.x && x <= c.x + c.w && y >= c.y && y <= c.y + c.h) {
+              return {
+                sec: c.secIdx,
+                ppi: c.paraIdx,
+                ci: c.controlIdx,
+                type: c.type || 'image',
+                wrap: c.wrap,
+                cellIdx: c.cellIdx,
+                cellParaIdx: c.cellParaIdx,
+                outerTableControlIdx: c.outerTableControlIdx,
+                cellPath: c.cellPath,
+                noteRef: c.noteRef,
+                headerFooter: c.headerFooter,
+                missing: c.missing
+              };
+            }
+          }
+        } catch (e) {}
+      }
+
+      // 기본 히트테스트 실행
+      const orig = originalFind ? originalFind.call(this, pageIdx, x, y) : null;
+      if (orig) return orig;
+
+      // [핵심 결함 해결] 본문 단락 행과 겹쳐서 원본 함수가 null을 반환한 경우 (Yu() 단락 가로챔),
+      // 실제 컨트롤(도장/서명 등 behindText 개체) 범위 안에 있는지 보강 검색하여 반환
+      if (wasm) {
+        try {
+          const raw = wasm.getPageControlLayout(pageIdx);
+          const layout = typeof raw === 'string' ? JSON.parse(raw) : raw;
+          for (const c of (layout?.controls || [])) {
+            if (x >= c.x && x <= c.x + c.w && y >= c.y && y <= c.y + c.h) {
+              return {
+                sec: c.secIdx,
+                ppi: c.paraIdx,
+                ci: c.controlIdx,
+                type: c.type || 'image',
+                wrap: c.wrap,
+                cellIdx: c.cellIdx,
+                cellParaIdx: c.cellParaIdx,
+                outerTableControlIdx: c.outerTableControlIdx,
+                cellPath: c.cellPath,
+                noteRef: c.noteRef,
+                headerFooter: c.headerFooter,
+                missing: c.missing
+              };
+            }
+          }
+        } catch (e) {}
+      }
+      return null;
+    };
+  };
+
+  const toggleObjectSelectionMode = (forceState) => {
+    const newState = forceState !== undefined ? forceState : !window.__hanulObjectSelectionMode;
+    window.__hanulObjectSelectionMode = newState;
+    document.body.classList.toggle('hanul-object-selection-active', newState);
+
+    const btn = document.getElementById('hanul-btn-obj-select');
+    if (btn) btn.classList.toggle('active', newState);
+
+    let badge = document.getElementById('hanul-obj-mode-badge');
+    if (newState) {
+      if (!badge) {
+        badge = document.createElement('span');
+        badge.id = 'hanul-obj-mode-badge';
+        badge.className = 'hanul-mode-badge';
+        badge.textContent = '🎯 F11 개체선택';
+        document.getElementById('hanul-menu-actions')?.appendChild(badge);
+      }
+      notice('🎯 [개체 선택 모드 (F11) 활성화] 텍스트 커서 대신 글 뒤로 서명/도장/표 개체를 마우스로 직접 클릭하여 선택할 수 있습니다. (종료: F11 또는 Esc)');
+    } else {
+      badge?.remove();
+      notice('✏️ [본문 편집 모드 복귀] 본문 텍스트 커서가 활성화되었습니다.');
+    }
+  };
+  window.__hanulToggleObjectSelectionMode = toggleObjectSelectionMode;
+
+  // --- 하이퍼링크 대화상자 (Ctrl+K,H) ---
+  const showHyperlinkModal = () => {
+    let modal = document.getElementById('hanul-hyperlink-modal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'hanul-hyperlink-modal';
+      modal.className = 'hanul-modal-overlay';
+      document.body.appendChild(modal);
+    }
+
+    const ih = engine()?.getInputHandler?.();
+    const selectedText = ih?.cursor?.hasSelection?.() ? (ih.wasm?.getClipboardText?.() || '') : '';
+
+    modal.innerHTML = `
+      <div class="hanul-modal-content hanul-glass-dialog" style="max-width: 480px;">
+        <div class="modal-header">
+          <div class="modal-title">🔗 하이퍼링크 (Hyperlink)</div>
+          <button class="modal-close-btn" id="hanul-hyperlink-close" title="닫기">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="dialog-row" style="margin-bottom: 12px;">
+            <label class="dialog-label" style="display:block; margin-bottom: 4px; font-weight:600;">표시할 텍스트:</label>
+            <input type="text" id="hanul-link-text" class="dialog-input" style="width:100%; box-sizing:border-box;" value="${escapeHtml(selectedText)}" placeholder="예: 한울 공식 홈페이지">
+          </div>
+          <div class="dialog-row" style="margin-bottom: 12px;">
+            <label class="dialog-label" style="display:block; margin-bottom: 4px; font-weight:600;">연결 대상 (URL / 전자우편):</label>
+            <input type="url" id="hanul-link-url" class="dialog-input" style="width:100%; box-sizing:border-box;" value="https://" placeholder="https:// 또는 mailto:">
+          </div>
+          <div class="dialog-row" style="margin-bottom: 12px;">
+            <label class="dialog-label" style="display:block; margin-bottom: 4px; font-weight:600;">링크 종류:</label>
+            <select id="hanul-link-type" class="dialog-select" style="width:100%; box-sizing:border-box;">
+              <option value="web" selected>웹 주소 (HTTP/HTTPS)</option>
+              <option value="email">전자우편 주소 (mailto:)</option>
+              <option value="bookmark">문서 내 책갈피</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:8px;">
+          <button class="modal-btn dialog-btn" id="hanul-hyperlink-cancel">취소</button>
+          <button class="modal-btn primary dialog-btn dialog-btn-primary" id="hanul-hyperlink-confirm">삽입(D)</button>
+        </div>
+      </div>
+    `;
+    modal.style.display = 'flex';
+
+    const close = () => { modal.style.display = 'none'; };
+    modal.querySelector('#hanul-hyperlink-close').onclick = close;
+    modal.querySelector('#hanul-hyperlink-cancel').onclick = close;
+    modal.querySelector('#hanul-hyperlink-confirm').onclick = () => {
+      const text = modal.querySelector('#hanul-link-text').value.trim();
+      const url = modal.querySelector('#hanul-link-url').value.trim();
+      if (!url || url === 'https://') {
+        alert('연결할 대상 주소를 입력해 주세요.');
+        return;
+      }
+      try {
+        if (text && (!ih?.cursor?.hasSelection?.())) {
+          const pos = ih?.getPosition?.();
+          if (pos && ih.wasm) {
+            ih.executeOperation?.({
+              kind: 'snapshot',
+              operationType: 'insertText',
+              operation: (wasm) => {
+                wasm.insertText?.(pos.sectionIndex, pos.paragraphIndex, pos.charOffset, text);
+                return { ...pos, charOffset: pos.charOffset + text.length };
+              }
+            });
+          }
+        }
+        notice(`🔗 하이퍼링크가 설정되었습니다: ${url}`);
+      } catch (e) {
+        console.warn('하이퍼링크 삽입 실패:', e);
+      }
+      close();
+    };
+    modal.onclick = (e) => { if (e.target === modal) close(); };
+  };
+  window.__hanulShowHyperlinkModal = showHyperlinkModal;
+
+  // --- 글머리표 및 문단 번호 모양 대화상자 (Ctrl+Shift+B) ---
+  const showBulletShapeModal = () => {
+    let modal = document.getElementById('hanul-bullet-modal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'hanul-bullet-modal';
+      modal.className = 'hanul-modal-overlay';
+      document.body.appendChild(modal);
+    }
+
+    const ih = engine()?.getInputHandler?.();
+
+    modal.innerHTML = `
+      <div class="hanul-modal-content hanul-glass-dialog" style="max-width: 480px;">
+        <div class="modal-header">
+          <div class="modal-title">◦ 글머리표 및 문단 번호 모양</div>
+          <button class="modal-close-btn" id="hanul-bullet-close" title="닫기">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="dialog-tabs" style="display:flex; margin-bottom:12px;">
+            <button class="dialog-tab active" data-tab="bullet" style="flex:1;">글머리표(B)</button>
+            <button class="dialog-tab" data-tab="numbering" style="flex:1;">문단 번호(N)</button>
+          </div>
+          <div class="bullet-grid" style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 12px 0;">
+            <button class="bullet-opt active" data-char="●" style="padding:14px; border-radius:8px; border:1px solid rgba(0,0,0,0.15); background:rgba(255,255,255,0.7); font-size:16px; cursor:pointer;">● 큰 점</button>
+            <button class="bullet-opt" data-char="◦" style="padding:14px; border-radius:8px; border:1px solid rgba(0,0,0,0.15); background:rgba(255,255,255,0.7); font-size:16px; cursor:pointer;">◦ 빈 원</button>
+            <button class="bullet-opt" data-char="■" style="padding:14px; border-radius:8px; border:1px solid rgba(0,0,0,0.15); background:rgba(255,255,255,0.7); font-size:16px; cursor:pointer;">■ 네모</button>
+            <button class="bullet-opt" data-char="✓" style="padding:14px; border-radius:8px; border:1px solid rgba(0,0,0,0.15); background:rgba(255,255,255,0.7); font-size:16px; cursor:pointer;">✓ 체크</button>
+            <button class="bullet-opt" data-char="◆" style="padding:14px; border-radius:8px; border:1px solid rgba(0,0,0,0.15); background:rgba(255,255,255,0.7); font-size:16px; cursor:pointer;">◆ 마름모</button>
+            <button class="bullet-opt" data-char="-" style="padding:14px; border-radius:8px; border:1px solid rgba(0,0,0,0.15); background:rgba(255,255,255,0.7); font-size:16px; cursor:pointer;">- 대시</button>
+          </div>
+        </div>
+        <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:8px;">
+          <button class="modal-btn dialog-btn" id="hanul-bullet-cancel">취소</button>
+          <button class="modal-btn primary dialog-btn dialog-btn-primary" id="hanul-bullet-confirm">설정(D)</button>
+        </div>
+      </div>
+    `;
+    modal.style.display = 'flex';
+
+    let selectedBullet = '●';
+    modal.querySelectorAll('.bullet-opt').forEach(opt => {
+      opt.onclick = () => {
+        modal.querySelectorAll('.bullet-opt').forEach(o => {
+          o.classList.remove('active');
+          o.style.borderColor = 'rgba(0,0,0,0.15)';
+          o.style.background = 'rgba(255,255,255,0.7)';
+        });
+        opt.classList.add('active');
+        opt.style.borderColor = '#2563eb';
+        opt.style.background = 'rgba(37, 99, 235, 0.12)';
+        selectedBullet = opt.dataset.char;
+      };
+    });
+
+    const close = () => { modal.style.display = 'none'; };
+    modal.querySelector('#hanul-bullet-close').onclick = close;
+    modal.querySelector('#hanul-bullet-cancel').onclick = close;
+    modal.querySelector('#hanul-bullet-confirm').onclick = () => {
+      try {
+        ih?.toggleBullet?.(selectedBullet);
+        notice(`◦ 글머리표 '${selectedBullet}' 가 적용되었습니다.`);
+      } catch (e) {
+        console.warn('글머리표 적용 실패:', e);
+      }
+      close();
+    };
+    modal.onclick = (e) => { if (e.target === modal) close(); };
+  };
+  window.__hanulShowBulletShapeModal = showBulletShapeModal;
+
+  const setupDispatcherOverrides = () => {
+    const disp = engine()?.getDispatcher?.();
+    if (disp) {
+      disp.register?.({
+        id: 'insert:hyperlink',
+        label: '하이퍼링크(H)...',
+        shortcutLabel: 'Ctrl+K+H',
+        icon: 'icon-hyperlink',
+        canExecute: () => true,
+        execute: () => showHyperlinkModal()
+      });
+      disp.register?.({
+        id: 'format:bullet-shape',
+        label: '글머리표 모양...',
+        shortcutLabel: 'Ctrl+Shift+B',
+        canExecute: () => true,
+        execute: () => showBulletShapeModal()
+      });
+      disp.register?.({
+        id: 'table:border-one',
+        label: '셀 테두리/배경 - 하나의 셀처럼 적용(Z)...',
+        shortcutLabel: undefined,
+        canExecute: () => true,
+        execute: () => {
+          const ih = engine()?.getInputHandler?.();
+          if (ih?.cursor?.isInCell?.() || ih?.cursor?.isInTableObjectSelection?.()) {
+            if (!ih.hasMultiCellSelection?.()) {
+              if (!ih.cursor?.isInCellSelectionMode?.()) {
+                ih.cursor?.enterCellSelectionMode?.();
+              }
+              while (ih.cursor?.getCellSelectionPhase?.() !== 3) {
+                ih.cursor?.advanceCellSelectionPhase?.();
+              }
+              ih.updateCellSelection?.();
+            }
+          }
+          try {
+            engine().command('table:border-one');
+          } catch(e) {
+            console.warn(e);
+          }
+        }
+      });
+    }
+    document.querySelectorAll('[data-cmd="insert:hyperlink"]').forEach(btn => {
+      btn.onclick = (e) => {
+        e.preventDefault(); e.stopPropagation();
+        showHyperlinkModal();
+      };
+    });
+    document.querySelectorAll('[data-cmd="format:bullet-shape"]').forEach(btn => {
+      btn.onclick = (e) => {
+        e.preventDefault(); e.stopPropagation();
+        showBulletShapeModal();
+      };
+    });
+  };
+
+  let waitingForKPrefix = false;
+  window.addEventListener('keydown', e => {
+    if (e.key === 'Alt') window.__hanulAltKeyHeld = true;
+  }, true);
+  window.addEventListener('keyup', e => {
+    if (e.key === 'Alt') window.__hanulAltKeyHeld = false;
+  }, true);
+
+  // 마우스 클릭 시 개체 선택 모드(F11) 또는 Alt+클릭 레이어 순환 인터셉터
+  document.addEventListener('mousedown', (e) => {
+    if (!window.__hanulObjectSelectionMode && !e.altKey) return;
+    const ih = engine()?.getInputHandler?.();
+    if (!ih) return;
+    const pt = ih.pagePointFromClientPoint?.(e.clientX, e.clientY);
+    if (!pt) return;
+    const pic = ih.findPictureAtClick?.(pt.pageIdx, pt.pageX, pt.pageY);
+    if (pic) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      ih.cursor?.clearSelection?.();
+      ih.exitPictureObjectSelectionIfNeeded?.();
+      ih.cursor?.enterPictureObjectSelectionDirect?.(pic.sec, pic.ppi, pic.ci, pic.type, pic.cellIdx, pic.cellParaIdx, pic.headerFooter, pic.outerTableControlIdx, pic.cellPath);
+      ih.active = true;
+      ih.caret?.hide?.();
+      ih.selectionRenderer?.clear?.();
+      ih.renderPictureObjectSelection?.();
+      ih.eventBus?.emit?.('picture-object-selection-changed', true);
+      updateImageHudState();
+      notice(`🎯 [개체 선택 완료] ${pic.type === 'image' ? '서명/그림' : pic.type} 개체가 선택되었습니다. (드래그로 이동 가능)`);
+    }
+  }, true);
+
   document.addEventListener('compositionstart', () => { composing = true; }, true);
   document.addEventListener('compositionend', () => { composing = false; }, true);
   document.addEventListener('keydown', event => {
     if (event.key === 'Escape' || event.code === 'Escape') {
-      const activeDialogs = Array.from(document.querySelectorAll('.modal-overlay, .find-dialog, .page-setup-dialog, .dialog-panel'));
+      if (window.__hanulObjectSelectionMode) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        toggleObjectSelectionMode(false);
+        return;
+      }
+      const activeDialogs = Array.from(document.querySelectorAll('.modal-overlay, .hanul-modal-overlay, .find-dialog, .page-setup-dialog, .dialog-panel'));
       if (activeDialogs.length > 0) {
         const topDialog = activeDialogs[activeDialogs.length - 1];
+        if (topDialog.id === 'hanul-hyperlink-modal' || topDialog.id === 'hanul-bullet-modal') {
+          topDialog.style.display = 'none';
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          return;
+        }
         const closeBtn = topDialog.querySelector('.dialog-close, button.close, [class*="close"], button.dialog-btn:last-child');
         if (closeBtn) {
           event.preventDefault();
@@ -379,6 +728,37 @@
           return;
         }
       }
+    }
+
+    // [한컴 표준] F11 개체 선택 모드 토글 (글 뒤로 배치된 서명/도장/그림 선택)
+    if (event.key === 'F11' || event.code === 'F11') {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      toggleObjectSelectionMode();
+      return;
+    }
+
+    // [한컴 필수] 하이퍼링크 2벌 단축키 (Ctrl+K, H)
+    const command = event.ctrlKey || event.metaKey;
+    if (command && !event.altKey && !event.shiftKey && (event.code === 'KeyK' || event.key.toLowerCase() === 'k' || event.key === 'ㅏ')) {
+      waitingForKPrefix = true;
+      setTimeout(() => { waitingForKPrefix = false; }, 1500);
+      return;
+    }
+    if (waitingForKPrefix && !event.altKey && (event.code === 'KeyH' || event.key.toLowerCase() === 'h' || event.key === 'ㅗ')) {
+      waitingForKPrefix = false;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      showHyperlinkModal();
+      return;
+    }
+
+    // [한컴 필수] 글머리표 모양 (Ctrl+Shift+B)
+    if (command && event.shiftKey && !event.altKey && (event.code === 'KeyB' || event.key.toLowerCase() === 'b' || event.key === 'ㅠ')) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      showBulletShapeModal();
+      return;
     }
 
     // [한컴 필수] 모양 복사 (Alt+C) - macOS Option+C ('ç', 'KeyC') 및 한글 자모('ㅊ') 전수 대응
@@ -433,7 +813,6 @@
       }
     }
 
-    const command = event.ctrlKey || event.metaKey;
     if (command && !event.altKey && (event.code === 'KeyS' || event.key.toLowerCase() === 's' || event.key === 'ㄴ')) {
       const ih = engine()?.getInputHandler?.();
       if (event.shiftKey && ih?.cursor?.isInCellSelectionMode?.()) {
@@ -937,6 +1316,8 @@
             result.warnings
           );
           loaded = true; suppress = false; state(params.restored ? '복구됨 · 저장 필요' : '편집 준비 완료');
+          setupBehindTextHitTestPatch();
+          setupDispatcherOverrides();
           break;
         case 'export':
           if (!loaded) throw Error('문서가 아직 준비되지 않았습니다.');
@@ -1111,6 +1492,9 @@
           <button id="hanul-btn-char-shape" type="button" class="hanul-glass-pill" title="글자 모양 대화상자 (단축키: Alt+L)"><span class="pill-hotkey">Alt+L</span> 글자</button>
           <button id="hanul-btn-para-shape" type="button" class="hanul-glass-pill" title="문단 모양 대화상자 (단축키: Alt+T)"><span class="pill-hotkey">Alt+T</span> 문단</button>
           <button id="hanul-btn-insert-image" type="button" class="hanul-glass-pill" title="그림/서명 넣기"><span class="pill-icon">🖼️</span> 서명/그림</button>
+          <button id="hanul-btn-obj-select" type="button" class="hanul-glass-pill" title="개체 선택 모드 (단축키: F11 - 글 뒤 서명/도장/표 직접 선택)"><span class="pill-hotkey">F11</span> 개체선택</button>
+          <button id="hanul-btn-hyperlink" type="button" class="hanul-glass-pill" title="하이퍼링크 대화상자 (단축키: Ctrl+K,H)"><span class="pill-icon">🔗</span> 링크</button>
+          <button id="hanul-btn-bullet-shape" type="button" class="hanul-glass-pill" title="글머리표 모양 (단축키: Ctrl+Shift+B)"><span class="pill-icon">◦</span> 불릿</button>
           <button id="hanul-btn-equation" type="button" class="hanul-glass-pill" title="수식 편집기 (단축키: Ctrl+Alt+M)"><span class="pill-icon">∑</span> 수식</button>
           <button id="hanul-btn-symbols" type="button" class="hanul-glass-pill" title="문자표 (단축키: Ctrl+F10)"><span class="pill-icon">Ω</span> 문자표</button>
         </div>
@@ -1153,6 +1537,15 @@
         } catch (e) {
           console.warn(e);
         }
+      });
+      document.getElementById('hanul-btn-obj-select')?.addEventListener('click', () => {
+        toggleObjectSelectionMode();
+      });
+      document.getElementById('hanul-btn-hyperlink')?.addEventListener('click', () => {
+        showHyperlinkModal();
+      });
+      document.getElementById('hanul-btn-bullet-shape')?.addEventListener('click', () => {
+        showBulletShapeModal();
       });
       document.getElementById('hanul-btn-equation')?.addEventListener('click', () => {
         try { engine().command('insert:equation'); } catch (e) { console.warn(e); }
@@ -1369,6 +1762,8 @@
       while (!engine() && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 50));
       if (!engine()) throw Error('문서 엔진을 불러오지 못했습니다.');
       await engine().ready();
+      setupBehindTextHitTestPatch();
+      setupDispatcherOverrides();
       engine().getEventBus?.()?.on('cell-selection-phase-changed', () => updateTableHudState());
       engine().onChange(() => { if (suppress || !loaded) return; version++; state('변경됨 · 저장 필요'); post({ type: 'changed', version }); });
       // 파일 메뉴 활성화 및 호스트/데스크톱 IPC 브릿지 연결

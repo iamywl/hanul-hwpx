@@ -21,6 +21,10 @@
    - XML 기반 HWPX를 우선 파싱하는 유저 시나리오를 수립하고, 이를 토대로 ProseMirror/TipTap 호환 JSON AST 명세를 우선 도출.
 6. **MCP (Model Context Protocol) 도구 명세 설계**
    - AI 에이전트가 한글 문서를 제어하기 위한 표준화된 Tool Contract(이름, 설명, 매개변수 JSON Schema, 반환 포맷) 정의.
+7. **실증 기반 명세 관리 프로토콜 (Empirical Spec Fidelity)**
+   - 추측이나 목업 단계의 기능을 '구현 완료'로 간주하여 명세서에 올리지 않으며, 반드시 QA의 실측 런타임 검증을 거친 항목만 🟢(완료)로 등록.
+8. **QA 결함 피드백 시 명세 매트릭스 즉시 강등 및 추적 관리**
+   - QA 및 사용자로부터 결함이 제보되거나 실측 인터랙션 한계가 확인되면, 지체 없이 `docs/SPEC_AND_TRACKING_MATRIX.md`에서 해당 항목을 🟡(결함추적)으로 강등하고 P0/P1 로드맵을 신설하여 개발 에이전트에 지시.
 
 ---
 

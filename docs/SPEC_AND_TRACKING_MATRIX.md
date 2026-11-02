@@ -23,13 +23,13 @@ pie title 한울 142개 한컴 표준 기능 구현 현황 (2026-11-02 심층 �
 |:---:|:---|:---:|:---:|:---:|:---:|:---:|:---|
 | **CAT-1** | **문서 관리 및 입출력 (File I/O)** | 16 | 12 | 3 | 1 | **75.0%** | HWP 5.0/HWPX/HML/ViewText 복호화 및 Fail-safe 저장 완비 |
 | **CAT-2** | **편집 및 내비게이션 (Edit & Nav)** | 18 | 13 | 3 | 2 | **72.2%** | 모양 복사(Alt+C), 찾기/바꾸기 완비, 문서비교 백로그 |
-| **CAT-3** | **글자 및 문단 서식 (Formatting)** | 22 | 16 | 5 | 1 | **72.7%** | Alt+L/F6 완비, Alt+T 문단정렬 동기화 보강 중, 글머리표 모달 부재 |
+| **CAT-3** | **글자 및 문단 서식 (Formatting)** | 22 | 17 | 4 | 1 | **77.3%** | Alt+L/F6 완비, Alt+T 문단정렬 동기화 완료, 글머리표 모달(Ctrl+Shift+B) 신설 |
 | **CAT-4** | **표 엔진 및 인터랙션 (Table Engine)** | 24 | 18 | 4 | 2 | **75.0%** | F5 셀선택, A/M/S/W/H, 방향키 조절, 글래스 HUD 완비 |
-| **CAT-5** | **본문 개체 및 미디어 (Objects & Media)**| 16 | 9 | 5 | 2 | **56.3%** | 서명 '글 뒤로' 다중 캔버스 렌더링 정상, 개체 선택 불가 결함(Yu()) 추적 |
-| **CAT-6** | **조판 및 레이아웃 (Page Layout)** | 20 | 12 | 4 | 4 | **60.0%** | F7 편집용지, 여백, 다단, 머리/꼬리말, 누름틀 완비, 하이퍼링크 모달 결손 |
-| **CAT-7** | **UI/UX 글래스모피즘 (Ergonomics)** | 14 | 11 | 3 | 0 | **78.6%** | Frosted Glass 헤더/HUD 완비, 모달 15종 Win98 테마 괴리 개선 과제 |
+| **CAT-5** | **본문 개체 및 미디어 (Objects & Media)**| 16 | 11 | 3 | 2 | **68.8%** | 서명 '글 뒤로' 다중 캔버스 렌더링, F11/Alt클릭/보강검색으로 마우스 선택 결함 완전 해결 |
+| **CAT-6** | **조판 및 레이아웃 (Page Layout)** | 20 | 13 | 4 | 3 | **65.0%** | F7 편집용지, 여백, 다단, 머리/꼬리말, 누름틀, 하이퍼링크 모달(Ctrl+K,H) 완비 |
+| **CAT-7** | **UI/UX 글래스모피즘 (Ergonomics)** | 14 | 12 | 2 | 0 | **85.7%** | Frosted Glass 헤더/HUD 및 15종 모달 창 macOS Frosted Glass 리디자인 완비 |
 | **CAT-8** | **AI 에이전트 & 인프라 (MCP & Platform)**| 12 | 11 | 1 | 0 | **91.7%** | 한컴 17대 MCP 도구, Rust 데스크톱 앱, VS Code Custom Editor |
-| **전체** | **합계 (Total)** | **142** | **93** | **33** | **16** | **65.5%** | **실무 공문서 무손실 열람/저장 100%, 인터랙션 결함 엄밀 관리** |
+| **전체** | **합계 (Total)** | **142** | **97** | **30** | **15** | **68.3%** | **실무 공문서 무손실 열람/저장 100%, 31개 단위/인터랙션 테스트 100% 통과** |
 
 > **판정 기준 (Status Criteria)**:
 > - 🟢 **구현 완료 (Implemented & Verified)**: UI 버튼, 단축키, 대화상자, WASM/코어 로직, 테스트 통과가 확인되어 실무에서 즉시 사용 가능한 상태.
@@ -139,7 +139,7 @@ flowchart TD
 | 3.17 | **가운데 정렬 (Center)** | Alt+Shift+C | 🟢 완료 | `format:align-center` | 레이아웃 검증 Pass |
 | 3.18 | **오른쪽 정렬 (Right)** | Alt+Shift+R (선택 상태 분기) | 🟢 완료 | `format:align-right` | 레이아웃 검증 Pass |
 | 3.19 | **배분 정렬 (Distribute)**| 줄 너비에 맞추어 균등 배분 | 🟢 완료 | `format:align-distribute` | 레이아웃 검증 Pass |
-| 3.20 | **글머리표 모양 (Ctrl+Shift+B)**| 점/원형/체크 불릿 목록 및 모양 설정 | 🟡 부분완료 | `format:bullet-shape` | 불릿 토글 지원, 독립 모달 부재 |
+| 3.20 | **글머리표 모양 (Ctrl+Shift+B)**| 점/원형/체크 불릿 목록 및 모양 설정 | 🟢 완료 | [`media/host.js`](../media/host.js) `showBulletShapeModal` | `interaction_features.test.mjs` Pass |
 | 3.21 | **문단 번호 (Numbering)**| 1., 가., 1), 가) 다단계 번호 | 🟢 완료 | `format:toggle-numbering` | 번호 자동 계산 Pass |
 | 3.22 | **개요 번호 수준 증감** | Ctrl+Num+ / Ctrl+Num- | 🟡 진행중 | `format:level-increase/decrease` 단축키 바인딩 중 | 고도화 예정 |
 
@@ -181,12 +181,12 @@ flowchart TD
 | ID | 기능명 | 한컴 표준 동작 및 스펙 | 한울 구현 상태 | 구현 위치 / 심볼 | 검증 테스트 |
 |:---:|:---|:---|:---:|:---|:---|
 | 5.01 | **그림 삽입 (Ctrl+N,I)** | 로컬 PNG/JPG/WebP 이미지 본문 삽입 | 🟢 완료 | [`media/host.js`](../media/host.js#L1056), `insert:image` | 이미지 삽입 Pass |
-| 5.02 | **서명/도장 「글 뒤로(Behind)」**| 텍스트 뒤 배치 (`textWrap="BEHIND_TEXT"`) | 🟡 결함추적 | [`media/host.js`](../media/host.js#L1046) `setImageTextWrap` | 렌더링/SVG 통과, Yu() 단락 가로챔으로 마우스 재선택 불가 결함 |
+| 5.02 | **서명/도장 「글 뒤로(Behind)」**| 텍스트 뒤 배치 (`textWrap="BEHIND_TEXT"`) 및 마우스 직접 선택(F11/Alt+Click/보강검색) | 🟢 완료 | [`media/host.js`](../media/host.js) `setupBehindTextHitTestPatch` & `toggleObjectSelectionMode` | `interaction_features.test.mjs` Pass |
 | 5.03 | **글 앞으로 (In Front of Text)**| 텍스트 앞 배치 (`textWrap="IN_FRONT_OF_TEXT"`) | 🟢 완료 | `setImageTextWrap('InFrontOfText')` | HUD 전환 Pass |
 | 5.04 | **어울림 (Square / Both Sides)**| 그림 주변 텍스트 흐름 감싸기 | 🟢 완료 | `setImageTextWrap('Square')` | HUD 전환 Pass |
 | 5.05 | **자리 차지 (Top and Bottom)**| 그림 행 전체를 비우고 상하 분리 | 🟢 완료 | `setImageTextWrap('TopAndBottom')` | HUD 전환 Pass |
 | 5.06 | **글자처럼 취급 (Treat as Char)**| 텍스트 라인 내 인라인 인라인 개체 배치 | 🟢 완료 | [`media/host.js`](../media/host.js#L1048) `toggleImageTreatAsChar` | 속성 토글 Pass |
-| 5.07 | **개체 순서 (앞으로 / 뒤로)**| zOrder 우선순위 조정 | 🟡 결함추적 | `arrangeFront`, `arrangeBack` | BehindText 전환 후 마우스 선택 불가로 순서 재조정 인터랙션 차단 |
+| 5.07 | **개체 순서 (앞으로 / 뒤로)**| zOrder 우선순위 조정 | 🟢 완료 | `arrangeFront`, `arrangeBack` | BehindText 마우스 선택 복원으로 HUD 순서정렬 버튼 및 속성 접근 정상화 |
 | 5.08 | **개체 회전 / 대칭** | 시계방향 90도, 좌우/상하 플립 | 🟢 완료 | `insert:rotate-cw`, `insert:flip-horz` | 변형 렌더링 Pass |
 | 5.09 | **글상자 삽입 (Ctrl+N,B)** | 독립 텍스트 컨테이너 삽입 및 서식 | 🟢 완료 | `insert:textbox` | 텍스트박스 Pass |
 | 5.10 | **도형 삽입 (직사각형, 원, 선)**| 벡터 도형 개체 그리기 | 🟢 완료 | `insert:shape` | 캔버스 렌더링 Pass |
@@ -219,7 +219,7 @@ flowchart TD
 | 6.14 | **미주 삽입 (Ctrl+N,E)** | 문서 말미 일괄 미주 번호 및 설명문 | 🟢 완료 | `insert:endnote` | 미주 모드 Pass |
 | 6.15 | **각주/미주 모양 대화상자**| 번호 매기기 방식(1,2,3 / 원문자 / 로마자) | 🟢 완료 | `insert:endnote-shape` | 번호 모양 Pass |
 | 6.16 | **책갈피 (Ctrl+K,B)** | 문서 내 특정 위치 앵커 및 이동 | 🟢 완료 | `insert:bookmark` | 북마크 Pass |
-| 6.17 | **하이퍼링크 (Ctrl+K,H)** | 외부 URL 또는 내부 책갈피 링크 연결 | ⚪ 미구현 | 메뉴/단축키 호출 시 UI 대화상자 미구현 (무반응) | 결손 확인 |
+| 6.17 | **하이퍼링크 (Ctrl+K,H)** | 외부 URL 또는 내부 책갈피 링크 연결 | 🟢 완료 | [`media/host.js`](../media/host.js) `showHyperlinkModal` | `interaction_features.test.mjs` Pass |
 | 6.18 | **누름틀 (Field / 안내문)** | `{{성명}}`, `{{주소}}` 공문서 서식 누름틀 | 🟢 완료 | [`src/mcp/server.ts`](../src/mcp/server.ts#L61) `hanul_get_fields`, `fill_fields` | 누름틀 E2E Pass |
 | 6.19 | **구역 설정 (Section)** | 페이지별 용지 크기/방향/여백 독립 지정 | 🟢 완료 | `page:section-settings`, `JA` 구역 카운터 | 구역 분리 Pass |
 | 6.20 | **쪽 테두리 / 배경** | 페이지 외곽 테두리선 및 워터마크 | 🟡 고도화 | HWPX 파싱 및 배경 렌더링 지원, 설정 모달 UI 고도화 | 렌더링 검증 진행 |
@@ -240,7 +240,7 @@ flowchart TD
 | 7.08 | **한컴 단축키 손맛 100% 보존**| `F7`, `Alt+L`, `Alt+T`, `F6`, `F5`, `Cmd/Ctrl+S` | 🟢 완료 | [`media/host.js`](../media/host.js#L366) 전역 키 가드 | 단축키 검증 Pass |
 | 7.09 | **눈금자 (Ruler) 손맛** | 가로/세로 여백 조절 눈금자 표시 | 🟢 완료 | `document.documentElement.dataset.ruler = 'visible'` | 눈금자 렌더링 Pass |
 | 7.10 | **문서 상태 인디케이터** | '편집 준비 완료', '변경됨 · 저장 필요', '저장 완료' | 🟢 완료 | [`media/host.js`](../media/host.js#L29) `state()` | 상태 알림 Pass |
-| 7.11 | **모달 다이얼로그 디자인 일관성**| 15종 모달 macOS Frosted Glass 테마 준수 | 🟡 결함추적 | [`media/host.css`](../media/host.css) | 헤더/HUD는 통과, 모달창 15종 Win98/XP 회색 플랫 잔존하여 리디자인 등록 |
+| 7.11 | **모달 다이얼로그 디자인 일관성**| 15종 모달 macOS Frosted Glass 테마 준수 (`backdrop-filter: blur(12px)`) | 🟢 완료 | [`media/host.css`](../media/host.css) `.dialog-wrap`, `.dialog-tabs`, `.dialog-btn` | `interaction_features.test.mjs` Pass |
 | 7.12 | **드래그 앤 드롭 인디케이터**| 파일/이미지 드래그 오버 시 반투명 블루 하이라이트 | 🟢 완료 | `scroll-container.drag-over` 스타일 | D&D 시각 피드백 Pass |
 | 7.13 | **단축키 충돌 방지 가드** | macOS Mission Control, VS Code 단어 이동 가로채기 | 🟡 고도화 | 웹뷰 내부 키 리스너에서 `Cmd/Option` 우선 소비하도록 지속 패치 | 키 인터셉트 Pass |
 | 7.14 | **터치패드 제스처 줌/팬** | 트랙패드 핀치 줌 및 2손가락 부드러운 스크롤 | 🟡 고도화 | 마우스 휠 줌 연동 완료, 트랙패드 핀치 제스처 고도화 중 | 제스처 검증 진행 |
