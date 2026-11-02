@@ -860,253 +860,556 @@ body {
 }
 
 /* ==========================================================================
-   10. VS Code Dark 모드 글래스모피즘 대응 (완벽한 고대비 가독성)
+   10. VS Code & 시스템 Dark 모드 글래스모피즘 대응 (완벽한 고대비 가독성)
    ========================================================================== */
-@media (prefers-color-scheme: dark), body.vscode-dark {
-  :root {
+:root[data-theme-effective="dark"],
+body.vscode-dark,
+body.vscode-high-contrast {
+  --hanul-text-primary: #f8fafc;
+  --hanul-text-secondary: #e2e8f0;
+  --hanul-text-muted: #94a3b8;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme-effective="light"]) {
     --hanul-text-primary: #f8fafc;
     --hanul-text-secondary: #e2e8f0;
     --hanul-text-muted: #94a3b8;
   }
+}
 
-  body {
+:root[data-theme-effective="dark"] body,
+body.vscode-dark,
+body.vscode-high-contrast {
+  background: #111216;
+  color: #f8fafc;
+}
+
+:root[data-theme-effective="dark"] #studio-header,
+body.vscode-dark #studio-header,
+body.vscode-high-contrast #studio-header {
+  background: rgba(22, 22, 28, 0.85) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+}
+
+:root[data-theme-effective="dark"] #menu-bar .menu-item,
+body.vscode-dark #menu-bar .menu-item,
+body.vscode-high-contrast #menu-bar .menu-item {
+  color: #f8fafc !important;
+}
+
+:root[data-theme-effective="dark"] #menu-bar .menu-item:hover,
+body.vscode-dark #menu-bar .menu-item:hover,
+body.vscode-high-contrast #menu-bar .menu-item:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+:root[data-theme-effective="dark"] .hanul-glass-segment,
+body.vscode-dark .hanul-glass-segment,
+body.vscode-high-contrast .hanul-glass-segment {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+:root[data-theme-effective="dark"] .hanul-glass-pill,
+body.vscode-dark .hanul-glass-pill,
+body.vscode-high-contrast .hanul-glass-pill {
+  color: #cbd5e1;
+}
+
+:root[data-theme-effective="dark"] .hanul-glass-pill:hover,
+body.vscode-dark .hanul-glass-pill:hover,
+body.vscode-high-contrast .hanul-glass-pill:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+:root[data-theme-effective="dark"] .hanul-glass-pill .pill-hotkey,
+body.vscode-dark .hanul-glass-pill .pill-hotkey,
+body.vscode-high-contrast .hanul-glass-pill .pill-hotkey {
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+:root[data-theme-effective="dark"] .hanul-menu-status,
+body.vscode-dark .hanul-menu-status,
+body.vscode-high-contrast .hanul-menu-status {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #cbd5e1;
+}
+
+:root[data-theme-effective="dark"] .hanul-glass-btn,
+body.vscode-dark .hanul-glass-btn,
+body.vscode-high-contrast .hanul-glass-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #f8fafc;
+}
+
+:root[data-theme-effective="dark"] .hanul-glass-btn:hover,
+body.vscode-dark .hanul-glass-btn:hover,
+body.vscode-high-contrast .hanul-glass-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+:root[data-theme-effective="dark"] #icon-toolbar,
+body.vscode-dark #icon-toolbar,
+body.vscode-high-contrast #icon-toolbar {
+  background: rgba(22, 22, 28, 0.75) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+:root[data-theme-effective="dark"] #icon-toolbar .tb-btn,
+body.vscode-dark #icon-toolbar .tb-btn,
+body.vscode-high-contrast #icon-toolbar .tb-btn {
+  color: #f8fafc !important;
+}
+
+:root[data-theme-effective="dark"] #icon-toolbar .tb-btn:hover,
+body.vscode-dark #icon-toolbar .tb-btn:hover,
+body.vscode-high-contrast #icon-toolbar .tb-btn:hover {
+  background: rgba(255, 255, 255, 0.14) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+:root[data-theme-effective="dark"] #icon-toolbar .tb-label,
+body.vscode-dark #icon-toolbar .tb-label,
+body.vscode-high-contrast #icon-toolbar .tb-label {
+  color: #cbd5e1 !important;
+}
+
+:root[data-theme-effective="dark"] #icon-toolbar .tb-sep,
+body.vscode-dark #icon-toolbar .tb-sep,
+body.vscode-high-contrast #icon-toolbar .tb-sep {
+  background: rgba(255, 255, 255, 0.12) !important;
+}
+
+:root[data-theme-effective="dark"] #style-bar,
+body.vscode-dark #style-bar,
+body.vscode-high-contrast #style-bar {
+  background: rgba(22, 22, 28, 0.65) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+:root[data-theme-effective="dark"] #style-bar select.sb-combo,
+:root[data-theme-effective="dark"] #style-bar input.sb-size,
+:root[data-theme-effective="dark"] #style-bar select.sb-ls-select,
+body.vscode-dark #style-bar select.sb-combo,
+body.vscode-dark #style-bar input.sb-size,
+body.vscode-dark #style-bar select.sb-ls-select {
+  background: rgba(30, 30, 38, 0.95) !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  color: #ffffff !important;
+}
+
+:root[data-theme-effective="dark"] #style-bar .sb-btn,
+body.vscode-dark #style-bar .sb-btn,
+body.vscode-high-contrast #style-bar .sb-btn {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: #e4e4e7 !important;
+}
+
+:root[data-theme-effective="dark"] #style-bar .sb-btn:hover,
+body.vscode-dark #style-bar .sb-btn:hover,
+body.vscode-high-contrast #style-bar .sb-btn:hover {
+  background: rgba(255, 255, 255, 0.16) !important;
+  color: #ffffff !important;
+}
+
+:root[data-theme-effective="dark"] #editor-area,
+body.vscode-dark #editor-area,
+body.vscode-high-contrast #editor-area {
+  background: #111216 !important;
+}
+
+:root[data-theme-effective="dark"] #scroll-container,
+body.vscode-dark #scroll-container,
+body.vscode-high-contrast #scroll-container {
+  background: #111216 !important;
+}
+
+:root[data-theme-effective="dark"] .hanul-table-hud,
+:root[data-theme-effective="dark"] .hanul-image-hud,
+body.vscode-dark .hanul-table-hud,
+body.vscode-dark .hanul-image-hud,
+body.vscode-high-contrast .hanul-table-hud,
+body.vscode-high-contrast .hanul-image-hud {
+  background: rgba(20, 20, 26, 0.94) !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7), 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+}
+
+:root[data-theme-effective="dark"] .hud-sep,
+body.vscode-dark .hud-sep,
+body.vscode-high-contrast .hud-sep {
+  background: rgba(255, 255, 255, 0.16) !important;
+}
+
+:root[data-theme-effective="dark"] .hanul-hud-badge,
+body.vscode-dark .hanul-hud-badge,
+body.vscode-high-contrast .hanul-hud-badge {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #f8fafc;
+}
+
+:root[data-theme-effective="dark"] .hud-btn,
+body.vscode-dark .hud-btn,
+body.vscode-high-contrast .hud-btn {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: #f1f5f9 !important;
+}
+
+:root[data-theme-effective="dark"] .hud-btn:hover,
+body.vscode-dark .hud-btn:hover,
+body.vscode-high-contrast .hud-btn:hover {
+  background: rgba(255, 255, 255, 0.16) !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+}
+
+:root[data-theme-effective="dark"] .hud-btn.accent,
+body.vscode-dark .hud-btn.accent,
+body.vscode-high-contrast .hud-btn.accent {
+  background: rgba(59, 130, 246, 0.25) !important;
+  border-color: rgba(59, 130, 246, 0.45) !important;
+  color: #bfdbfe !important;
+}
+
+:root[data-theme-effective="dark"] .hud-btn.accent:hover,
+body.vscode-dark .hud-btn.accent:hover,
+body.vscode-high-contrast .hud-btn.accent:hover {
+  background: rgba(59, 130, 246, 0.35) !important;
+  color: #ffffff !important;
+}
+
+:root[data-theme-effective="dark"] .hud-btn.danger,
+body.vscode-dark .hud-btn.danger,
+body.vscode-high-contrast .hud-btn.danger {
+  color: #fca5a5 !important;
+}
+
+:root[data-theme-effective="dark"] .hud-btn.danger:hover,
+body.vscode-dark .hud-btn.danger:hover,
+body.vscode-high-contrast .hud-btn.danger:hover {
+  background: rgba(239, 68, 68, 0.22) !important;
+  border-color: rgba(239, 68, 68, 0.45) !important;
+  color: #ffffff !important;
+}
+
+:root[data-theme-effective="dark"] #status-bar,
+body.vscode-dark #status-bar,
+body.vscode-high-contrast #status-bar {
+  background: rgba(22, 22, 28, 0.85) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: #cbd5e1 !important;
+}
+
+:root[data-theme-effective="dark"] #status-bar .stb-item,
+body.vscode-dark #status-bar .stb-item,
+body.vscode-high-contrast #status-bar .stb-item {
+  color: #cbd5e1 !important;
+}
+
+:root[data-theme-effective="dark"] #status-bar .stb-divider,
+body.vscode-dark #status-bar .stb-divider,
+body.vscode-high-contrast #status-bar .stb-divider {
+  background: rgba(255, 255, 255, 0.12) !important;
+}
+
+:root[data-theme-effective="dark"] #hanul-notice,
+body.vscode-dark #hanul-notice,
+body.vscode-high-contrast #hanul-notice {
+  background: rgba(24, 24, 30, 0.94);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #f8fafc;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+}
+
+:root[data-theme-effective="dark"] .hanul-modal-content,
+body.vscode-dark .hanul-modal-content,
+body.vscode-high-contrast .hanul-modal-content {
+  background: rgba(26, 26, 32, 0.96);
+  color: #f8fafc;
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7);
+}
+
+:root[data-theme-effective="dark"] .modal-header,
+body.vscode-dark .modal-header,
+body.vscode-high-contrast .modal-header {
+  background: rgba(20, 20, 26, 0.85);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+:root[data-theme-effective="dark"] .modal-title,
+body.vscode-dark .modal-title,
+body.vscode-high-contrast .modal-title {
+  color: #ffffff;
+}
+
+:root[data-theme-effective="dark"] .modal-close-btn,
+body.vscode-dark .modal-close-btn,
+body.vscode-high-contrast .modal-close-btn {
+  color: #94a3b8;
+}
+
+:root[data-theme-effective="dark"] .modal-close-btn:hover,
+body.vscode-dark .modal-close-btn:hover,
+body.vscode-high-contrast .modal-close-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+:root[data-theme-effective="dark"] .warning-list,
+body.vscode-dark .warning-list,
+body.vscode-high-contrast .warning-list {
+  background: rgba(20, 20, 26, 0.85);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+:root[data-theme-effective="dark"] .warning-key,
+body.vscode-dark .warning-key,
+body.vscode-high-contrast .warning-key {
+  color: #fbbf24;
+}
+
+:root[data-theme-effective="dark"] .warning-val,
+body.vscode-dark .warning-val,
+body.vscode-high-contrast .warning-val {
+  color: #e2e8f0;
+}
+
+:root[data-theme-effective="dark"] .warning-explanation,
+body.vscode-dark .warning-explanation,
+body.vscode-high-contrast .warning-explanation {
+  background: rgba(30, 58, 138, 0.35);
+  border-color: rgba(59, 130, 246, 0.4);
+  color: #bfdbfe;
+}
+
+:root[data-theme-effective="dark"] .modal-footer,
+body.vscode-dark .modal-footer,
+body.vscode-high-contrast .modal-footer {
+  background: rgba(20, 20, 26, 0.85);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+:root[data-theme-effective="dark"] .modal-btn,
+body.vscode-dark .modal-btn,
+body.vscode-high-contrast .modal-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #f8fafc;
+}
+
+:root[data-theme-effective="dark"] .modal-btn.primary,
+body.vscode-dark .modal-btn.primary,
+body.vscode-high-contrast .modal-btn.primary {
+  background: var(--hanul-accent-blue);
+  border-color: #3b82f6;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme-effective="light"]) body {
     background: #111216;
     color: #f8fafc;
   }
-
-  #studio-header {
+  :root:not([data-theme-effective="light"]) #studio-header {
     background: rgba(22, 22, 28, 0.85) !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
   }
-
-  #menu-bar .menu-item {
+  :root:not([data-theme-effective="light"]) #menu-bar .menu-item {
     color: #f8fafc !important;
   }
-
-  #menu-bar .menu-item:hover {
+  :root:not([data-theme-effective="light"]) #menu-bar .menu-item:hover {
     background: rgba(255, 255, 255, 0.1) !important;
   }
-
-  .hanul-glass-segment {
+  :root:not([data-theme-effective="light"]) .hanul-glass-segment {
     background: rgba(255, 255, 255, 0.06);
     border-color: rgba(255, 255, 255, 0.1);
   }
-
-  .hanul-glass-pill {
+  :root:not([data-theme-effective="light"]) .hanul-glass-pill {
     color: #cbd5e1;
   }
-
-  .hanul-glass-pill:hover {
+  :root:not([data-theme-effective="light"]) .hanul-glass-pill:hover {
     background: rgba(255, 255, 255, 0.15);
     color: #ffffff;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
   }
-
-  .hanul-glass-pill .pill-hotkey {
+  :root:not([data-theme-effective="light"]) .hanul-glass-pill .pill-hotkey {
     color: #94a3b8;
     background: rgba(255, 255, 255, 0.1);
   }
-
-  .hanul-menu-status {
+  :root:not([data-theme-effective="light"]) .hanul-menu-status {
     background: rgba(255, 255, 255, 0.06);
     border-color: rgba(255, 255, 255, 0.1);
     color: #cbd5e1;
   }
-
-  .hanul-glass-btn {
+  :root:not([data-theme-effective="light"]) .hanul-glass-btn {
     background: rgba(255, 255, 255, 0.08);
     border-color: rgba(255, 255, 255, 0.14);
     color: #f8fafc;
   }
-
-  .hanul-glass-btn:hover {
+  :root:not([data-theme-effective="light"]) .hanul-glass-btn:hover {
     background: rgba(255, 255, 255, 0.16);
     color: #ffffff;
     border-color: rgba(255, 255, 255, 0.22);
   }
-
-  #icon-toolbar {
+  :root:not([data-theme-effective="light"]) #icon-toolbar {
     background: rgba(22, 22, 28, 0.75) !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
   }
-
-  #icon-toolbar .tb-btn {
+  :root:not([data-theme-effective="light"]) #icon-toolbar .tb-btn {
     color: #f8fafc !important;
   }
-
-  #icon-toolbar .tb-btn:hover {
+  :root:not([data-theme-effective="light"]) #icon-toolbar .tb-btn:hover {
     background: rgba(255, 255, 255, 0.14) !important;
     border-color: rgba(255, 255, 255, 0.15) !important;
   }
-
-  #icon-toolbar .tb-label {
+  :root:not([data-theme-effective="light"]) #icon-toolbar .tb-label {
     color: #cbd5e1 !important;
   }
-
-  #icon-toolbar .tb-sep {
+  :root:not([data-theme-effective="light"]) #icon-toolbar .tb-sep {
     background: rgba(255, 255, 255, 0.12) !important;
   }
-
-  #style-bar {
+  :root:not([data-theme-effective="light"]) #style-bar {
     background: rgba(22, 22, 28, 0.65) !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
   }
-
-  #style-bar select.sb-combo,
-  #style-bar input.sb-size,
-  #style-bar select.sb-ls-select {
+  :root:not([data-theme-effective="light"]) #style-bar select.sb-combo,
+  :root:not([data-theme-effective="light"]) #style-bar input.sb-size,
+  :root:not([data-theme-effective="light"]) #style-bar select.sb-ls-select {
     background: rgba(30, 30, 38, 0.95) !important;
     border-color: rgba(255, 255, 255, 0.16) !important;
     color: #ffffff !important;
   }
-
-  #style-bar .sb-btn {
+  :root:not([data-theme-effective="light"]) #style-bar .sb-btn {
     background: rgba(255, 255, 255, 0.08) !important;
     border-color: rgba(255, 255, 255, 0.12) !important;
     color: #e4e4e7 !important;
   }
-
-  #style-bar .sb-btn:hover {
+  :root:not([data-theme-effective="light"]) #style-bar .sb-btn:hover {
     background: rgba(255, 255, 255, 0.16) !important;
     color: #ffffff !important;
   }
-
-  #editor-area {
+  :root:not([data-theme-effective="light"]) #editor-area {
     background: #111216 !important;
   }
-
-  #scroll-container {
+  :root:not([data-theme-effective="light"]) #scroll-container {
     background: #111216 !important;
   }
-
-  .hanul-table-hud,
-  .hanul-image-hud {
+  :root:not([data-theme-effective="light"]) .hanul-table-hud,
+  :root:not([data-theme-effective="light"]) .hanul-image-hud {
     background: rgba(20, 20, 26, 0.94) !important;
     border-color: rgba(255, 255, 255, 0.16) !important;
     box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7), 0 2px 8px rgba(0, 0, 0, 0.4) !important;
   }
-
-  .hud-sep {
+  :root:not([data-theme-effective="light"]) .hud-sep {
     background: rgba(255, 255, 255, 0.16) !important;
   }
-
-  .hanul-hud-badge {
+  :root:not([data-theme-effective="light"]) .hanul-hud-badge {
     background: rgba(255, 255, 255, 0.08);
     border-color: rgba(255, 255, 255, 0.12);
     color: #f8fafc;
   }
-
-  .hud-btn {
+  :root:not([data-theme-effective="light"]) .hud-btn {
     background: rgba(255, 255, 255, 0.08) !important;
     border-color: rgba(255, 255, 255, 0.12) !important;
     color: #f1f5f9 !important;
   }
-
-  .hud-btn:hover {
+  :root:not([data-theme-effective="light"]) .hud-btn:hover {
     background: rgba(255, 255, 255, 0.16) !important;
     color: #ffffff !important;
     border-color: rgba(255, 255, 255, 0.22) !important;
   }
-
-  .hud-btn.accent {
+  :root:not([data-theme-effective="light"]) .hud-btn.accent {
     background: rgba(59, 130, 246, 0.25) !important;
     border-color: rgba(59, 130, 246, 0.45) !important;
     color: #bfdbfe !important;
   }
-
-  .hud-btn.accent:hover {
+  :root:not([data-theme-effective="light"]) .hud-btn.accent:hover {
     background: rgba(59, 130, 246, 0.35) !important;
     color: #ffffff !important;
   }
-
-  .hud-btn.danger {
+  :root:not([data-theme-effective="light"]) .hud-btn.danger {
     color: #fca5a5 !important;
   }
-
-  .hud-btn.danger:hover {
+  :root:not([data-theme-effective="light"]) .hud-btn.danger:hover {
     background: rgba(239, 68, 68, 0.22) !important;
     border-color: rgba(239, 68, 68, 0.45) !important;
     color: #ffffff !important;
   }
-
-  #status-bar {
+  :root:not([data-theme-effective="light"]) #status-bar {
     background: rgba(22, 22, 28, 0.85) !important;
     border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
     color: #cbd5e1 !important;
   }
-
-  #status-bar .stb-item {
+  :root:not([data-theme-effective="light"]) #status-bar .stb-item {
     color: #cbd5e1 !important;
   }
-
-  #status-bar .stb-divider {
+  :root:not([data-theme-effective="light"]) #status-bar .stb-divider {
     background: rgba(255, 255, 255, 0.12) !important;
   }
-
-  #hanul-notice {
+  :root:not([data-theme-effective="light"]) #hanul-notice {
     background: rgba(24, 24, 30, 0.94);
     border-color: rgba(255, 255, 255, 0.16);
     color: #f8fafc;
     box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
   }
-
-  .hanul-modal-content {
+  :root:not([data-theme-effective="light"]) .hanul-modal-content {
     background: rgba(26, 26, 32, 0.96);
     color: #f8fafc;
     border-color: rgba(255, 255, 255, 0.14);
     box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7);
   }
-
-  .modal-header {
+  :root:not([data-theme-effective="light"]) .modal-header {
     background: rgba(20, 20, 26, 0.85);
     border-color: rgba(255, 255, 255, 0.1);
   }
-
-  .modal-title {
+  :root:not([data-theme-effective="light"]) .modal-title {
     color: #ffffff;
   }
-
-  .modal-close-btn {
+  :root:not([data-theme-effective="light"]) .modal-close-btn {
     color: #94a3b8;
   }
-
-  .modal-close-btn:hover {
+  :root:not([data-theme-effective="light"]) .modal-close-btn:hover {
     background: rgba(255, 255, 255, 0.1);
     color: #ffffff;
   }
-
-  .warning-list {
+  :root:not([data-theme-effective="light"]) .warning-list {
     background: rgba(20, 20, 26, 0.85);
     border-color: rgba(255, 255, 255, 0.1);
   }
-
-  .warning-key {
+  :root:not([data-theme-effective="light"]) .warning-key {
     color: #fbbf24;
   }
-
-  .warning-val {
+  :root:not([data-theme-effective="light"]) .warning-val {
     color: #e2e8f0;
   }
-
-  .warning-explanation {
+  :root:not([data-theme-effective="light"]) .warning-explanation {
     background: rgba(30, 58, 138, 0.35);
     border-color: rgba(59, 130, 246, 0.4);
     color: #bfdbfe;
   }
-
-  .modal-footer {
+  :root:not([data-theme-effective="light"]) .modal-footer {
     background: rgba(20, 20, 26, 0.85);
     border-color: rgba(255, 255, 255, 0.1);
   }
-
-  .modal-btn {
+  :root:not([data-theme-effective="light"]) .modal-btn {
     background: rgba(255, 255, 255, 0.08);
     border-color: rgba(255, 255, 255, 0.14);
     color: #f8fafc;
   }
-
-  .modal-btn.primary {
+  :root:not([data-theme-effective="light"]) .modal-btn.primary {
     background: var(--hanul-accent-blue);
     border-color: #3b82f6;
   }
@@ -1132,13 +1435,10 @@ body {
 }
 
 /* ==========================================================================
-   macOS Frosted Glass Dialogs & Modals (글래스모피즘 15종 통합 테마)
+   11. macOS Frosted Glass Dialogs & Modals (15종 공통 기본 구조)
    ========================================================================== */
 .modal-overlay,
 .hanul-modal-overlay {
-  background: rgba(15, 23, 42, 0.45) !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
   z-index: 1000 !important;
   animation: hanul-modal-fade 0.18s ease-out;
 }
@@ -1153,20 +1453,13 @@ body {
 .find-dialog,
 .page-setup-dialog,
 .hanul-modal-content {
-  background: rgba(255, 255, 255, 0.92) !important;
-  backdrop-filter: blur(32px) saturate(200%) !important;
-  -webkit-backdrop-filter: blur(32px) saturate(200%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.85) !important;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.18), 0 4px 16px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.95) !important;
   border-radius: 14px !important;
   font-family: -apple-system, BlinkMacSystemFont, 'Pretendard Variable', Pretendard, 'SF Pro Text', sans-serif !important;
 }
 
 .dialog-header {
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
   font-weight: 650 !important;
   font-size: 14px !important;
-  color: var(--hanul-text-primary) !important;
   padding: 12px 18px !important;
 }
 
@@ -1176,10 +1469,8 @@ body {
 }
 
 .dialog-tabs {
-  background: rgba(0, 0, 0, 0.04) !important;
   border-radius: 8px !important;
   padding: 3px !important;
-  border: 1px solid rgba(0, 0, 0, 0.06) !important;
   margin: 12px 16px 8px !important;
 }
 
@@ -1189,16 +1480,7 @@ body {
   font-size: 12px !important;
   padding: 5px 12px !important;
   font-weight: 550 !important;
-  color: var(--hanul-text-secondary) !important;
   transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1) !important;
-}
-
-.dialog-tab.active,
-.dialog-tab[aria-selected="true"] {
-  background: #ffffff !important;
-  color: var(--hanul-text-primary) !important;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1), inset 0 1px 0 #ffffff !important;
-  font-weight: 600 !important;
 }
 
 .dialog-body,
@@ -1207,30 +1489,19 @@ body {
 }
 
 .dialog-footer {
-  border-top: 1px solid rgba(0, 0, 0, 0.08) !important;
   padding: 12px 18px !important;
-  background: rgba(255, 255, 255, 0.5) !important;
   border-bottom-left-radius: 14px !important;
   border-bottom-right-radius: 14px !important;
 }
 
 .dialog-btn {
   border-radius: 7px !important;
-  border: 1px solid rgba(0, 0, 0, 0.12) !important;
-  background: rgba(255, 255, 255, 0.85) !important;
-  color: var(--hanul-text-primary) !important;
   font-size: 12.5px !important;
   font-weight: 550 !important;
   padding: 5px 14px !important;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
   transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1) !important;
   cursor: pointer !important;
-}
-
-.dialog-btn:hover {
-  background: #ffffff !important;
-  border-color: rgba(0, 0, 0, 0.2) !important;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08) !important;
 }
 
 .dialog-btn:active {
@@ -1262,33 +1533,516 @@ body {
   align-items: center !important;
   justify-content: center !important;
   transition: background 0.15s ease !important;
-  color: var(--hanul-text-muted) !important;
-}
-
-.dialog-close:hover,
-.modal-close-btn:hover {
-  background: rgba(0, 0, 0, 0.08) !important;
-  color: var(--hanul-text-primary) !important;
 }
 
 .dialog-input,
 .dialog-text-input,
 .dialog-select {
   border-radius: 6px !important;
-  border: 1px solid rgba(0, 0, 0, 0.15) !important;
-  background: #ffffff !important;
   padding: 5px 8px !important;
   font-size: 12.5px !important;
-  color: var(--hanul-text-primary) !important;
   transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
 }
 
-.dialog-input:focus,
-.dialog-text-input:focus,
-.dialog-select:focus {
-  border-color: var(--hanul-accent-blue) !important;
+/* ==========================================================================
+   11-A. 라이트 모드 대화상자 (Light Mode - Frosted White Glass)
+   ========================================================================== */
+:root:not([data-theme-effective="dark"]) .modal-overlay,
+:root[data-theme-effective="light"] .modal-overlay,
+body.vscode-light .modal-overlay {
+  background: rgba(15, 23, 42, 0.35) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+:root:not([data-theme-effective="dark"]) .dialog-wrap,
+:root:not([data-theme-effective="dark"]) .dialog-panel,
+:root:not([data-theme-effective="dark"]) .find-dialog,
+:root:not([data-theme-effective="dark"]) .page-setup-dialog,
+:root:not([data-theme-effective="dark"]) .hanul-modal-content,
+:root[data-theme-effective="light"] .dialog-wrap,
+:root[data-theme-effective="light"] .dialog-panel,
+:root[data-theme-effective="light"] .find-dialog,
+:root[data-theme-effective="light"] .page-setup-dialog,
+:root[data-theme-effective="light"] .hanul-modal-content,
+body.vscode-light .dialog-wrap,
+body.vscode-light .dialog-panel,
+body.vscode-light .find-dialog,
+body.vscode-light .page-setup-dialog,
+body.vscode-light .hanul-modal-content {
+  background: rgba(255, 255, 255, 0.96) !important;
+  backdrop-filter: blur(32px) saturate(200%) !important;
+  -webkit-backdrop-filter: blur(32px) saturate(200%) !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.18), 0 4px 16px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.95) !important;
+  color: #0f172a !important;
+}
+
+:root:not([data-theme-effective="dark"]) .dialog-header,
+:root:not([data-theme-effective="dark"]) .dialog-title,
+:root[data-theme-effective="light"] .dialog-header,
+:root[data-theme-effective="light"] .dialog-title,
+body.vscode-light .dialog-header,
+body.vscode-light .dialog-title {
+  background: rgba(248, 250, 252, 0.95) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+  color: #0f172a !important;
+}
+
+:root:not([data-theme-effective="dark"]) .dialog-tabs,
+:root[data-theme-effective="light"] .dialog-tabs,
+body.vscode-light .dialog-tabs {
+  background: rgba(0, 0, 0, 0.04) !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+}
+
+:root:not([data-theme-effective="dark"]) .dialog-tab,
+:root[data-theme-effective="light"] .dialog-tab,
+body.vscode-light .dialog-tab {
+  color: #64748b !important;
+}
+
+:root:not([data-theme-effective="dark"]) .dialog-tab.active,
+:root:not([data-theme-effective="dark"]) .dialog-tab[aria-selected="true"],
+:root[data-theme-effective="light"] .dialog-tab.active,
+:root[data-theme-effective="light"] .dialog-tab[aria-selected="true"],
+body.vscode-light .dialog-tab.active {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1), inset 0 1px 0 #ffffff !important;
+  font-weight: 600 !important;
+}
+
+:root:not([data-theme-effective="dark"]) .dialog-section,
+:root[data-theme-effective="light"] .dialog-section,
+body.vscode-light .dialog-section {
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 8px !important;
+}
+
+:root:not([data-theme-effective="dark"]) .dialog-section-title,
+:root[data-theme-effective="light"] .dialog-section-title,
+body.vscode-light .dialog-section-title {
+  color: #1e40af !important;
+  font-weight: 650 !important;
+}
+
+:root:not([data-theme-effective="dark"]) .dialog-label,
+:root:not([data-theme-effective="dark"]) .dialog-unit,
+:root[data-theme-effective="light"] .dialog-label,
+:root[data-theme-effective="light"] .dialog-unit,
+body.vscode-light .dialog-label,
+body.vscode-light .dialog-unit {
+  color: #334155 !important;
+}
+
+:root:not([data-theme-effective="dark"]) .dialog-input,
+:root:not([data-theme-effective="dark"]) .dialog-text-input,
+:root:not([data-theme-effective="dark"]) .dialog-select,
+:root[data-theme-effective="light"] .dialog-input,
+:root[data-theme-effective="light"] .dialog-text-input,
+:root[data-theme-effective="light"] .dialog-select,
+body.vscode-light .dialog-input,
+body.vscode-light .dialog-text-input,
+body.vscode-light .dialog-select {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+  color-scheme: light !important;
+}
+
+:root:not([data-theme-effective="dark"]) .dialog-input:focus,
+:root:not([data-theme-effective="dark"]) .dialog-text-input:focus,
+:root:not([data-theme-effective="dark"]) .dialog-select:focus,
+:root[data-theme-effective="light"] .dialog-input:focus,
+:root[data-theme-effective="light"] .dialog-text-input:focus,
+:root[data-theme-effective="light"] .dialog-select:focus,
+body.vscode-light .dialog-input:focus,
+body.vscode-light .dialog-text-input:focus,
+body.vscode-light .dialog-select:focus {
+  border-color: #2563eb !important;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18) !important;
   outline: none !important;
+}
+
+:root:not([data-theme-effective="dark"]) .icon-radio-card,
+:root[data-theme-effective="light"] .icon-radio-card,
+body.vscode-light .icon-radio-card {
+  background: #ffffff !important;
+  border: 1.5px solid #cbd5e1 !important;
+  color: #1e293b !important;
+}
+
+:root:not([data-theme-effective="dark"]) .icon-radio-card:hover,
+:root[data-theme-effective="light"] .icon-radio-card:hover,
+body.vscode-light .icon-radio-card:hover {
+  border-color: #3b82f6 !important;
+  background: #eff6ff !important;
+}
+
+:root:not([data-theme-effective="dark"]) .icon-radio-card.selected,
+:root[data-theme-effective="light"] .icon-radio-card.selected,
+body.vscode-light .icon-radio-card.selected {
+  border-color: #2563eb !important;
+  background: #dbeafe !important;
+  box-shadow: 0 0 0 1px #2563eb !important;
+}
+
+:root:not([data-theme-effective="dark"]) .icon-radio-text,
+:root[data-theme-effective="light"] .icon-radio-text,
+body.vscode-light .icon-radio-text {
+  color: #1e293b !important;
+}
+
+:root:not([data-theme-effective="dark"]) .dialog-footer,
+:root[data-theme-effective="light"] .dialog-footer,
+body.vscode-light .dialog-footer {
+  border-top: 1px solid rgba(0, 0, 0, 0.08) !important;
+  background: rgba(248, 250, 252, 0.95) !important;
+}
+
+:root:not([data-theme-effective="dark"]) .dialog-btn:not(.dialog-btn-primary),
+:root[data-theme-effective="light"] .dialog-btn:not(.dialog-btn-primary),
+body.vscode-light .dialog-btn:not(.dialog-btn-primary) {
+  border: 1px solid #cbd5e1 !important;
+  background: #ffffff !important;
+  color: #334155 !important;
+}
+
+:root:not([data-theme-effective="dark"]) .dialog-btn:not(.dialog-btn-primary):hover,
+:root[data-theme-effective="light"] .dialog-btn:not(.dialog-btn-primary):hover,
+body.vscode-light .dialog-btn:not(.dialog-btn-primary):hover {
+  background: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+  color: #0f172a !important;
+}
+
+:root:not([data-theme-effective="dark"]) .dialog-close,
+:root:not([data-theme-effective="dark"]) .modal-close-btn,
+:root[data-theme-effective="light"] .dialog-close,
+:root[data-theme-effective="light"] .modal-close-btn,
+body.vscode-light .dialog-close,
+body.vscode-light .modal-close-btn {
+  color: #64748b !important;
+}
+
+:root:not([data-theme-effective="dark"]) .dialog-close:hover,
+:root:not([data-theme-effective="dark"]) .modal-close-btn:hover,
+:root[data-theme-effective="light"] .dialog-close:hover,
+:root[data-theme-effective="light"] .modal-close-btn:hover,
+body.vscode-light .dialog-close:hover,
+body.vscode-light .modal-close-btn:hover {
+  background: rgba(0, 0, 0, 0.08) !important;
+  color: #0f172a !important;
+}
+
+/* ==========================================================================
+   11-B. 다크 모드 대화상자 (Dark Mode - Deep Graphite Glass & WCAG AAA High Contrast)
+   ========================================================================== */
+:root[data-theme-effective="dark"] .modal-overlay,
+body.vscode-dark .modal-overlay,
+body.vscode-high-contrast .modal-overlay {
+  background: rgba(0, 0, 0, 0.65) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+}
+
+:root[data-theme-effective="dark"] .dialog-wrap,
+:root[data-theme-effective="dark"] .dialog-panel,
+:root[data-theme-effective="dark"] .find-dialog,
+:root[data-theme-effective="dark"] .page-setup-dialog,
+:root[data-theme-effective="dark"] .hanul-modal-content,
+body.vscode-dark .dialog-wrap,
+body.vscode-dark .dialog-panel,
+body.vscode-dark .find-dialog,
+body.vscode-dark .page-setup-dialog,
+body.vscode-dark .hanul-modal-content,
+body.vscode-high-contrast .dialog-wrap,
+body.vscode-high-contrast .dialog-panel,
+body.vscode-high-contrast .find-dialog,
+body.vscode-high-contrast .page-setup-dialog,
+body.vscode-high-contrast .hanul-modal-content {
+  background: rgba(30, 32, 40, 0.98) !important;
+  backdrop-filter: blur(32px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(32px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  box-shadow: 0 28px 72px rgba(0, 0, 0, 0.7), 0 4px 20px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+  color: #f8fafc !important;
+}
+
+:root[data-theme-effective="dark"] .dialog-header,
+:root[data-theme-effective="dark"] .dialog-title,
+body.vscode-dark .dialog-header,
+body.vscode-dark .dialog-title,
+body.vscode-high-contrast .dialog-header,
+body.vscode-high-contrast .dialog-title {
+  background: rgba(24, 26, 32, 0.98) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+}
+
+:root[data-theme-effective="dark"] .dialog-tabs,
+body.vscode-dark .dialog-tabs,
+body.vscode-high-contrast .dialog-tabs {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+:root[data-theme-effective="dark"] .dialog-tab,
+body.vscode-dark .dialog-tab,
+body.vscode-high-contrast .dialog-tab {
+  color: #94a3b8 !important;
+}
+
+:root[data-theme-effective="dark"] .dialog-tab.active,
+:root[data-theme-effective="dark"] .dialog-tab[aria-selected="true"],
+body.vscode-dark .dialog-tab.active,
+body.vscode-dark .dialog-tab[aria-selected="true"],
+body.vscode-high-contrast .dialog-tab.active {
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3) !important;
+  font-weight: 600 !important;
+}
+
+:root[data-theme-effective="dark"] .dialog-body,
+:root[data-theme-effective="dark"] .dialog-tab-panel,
+body.vscode-dark .dialog-body,
+body.vscode-dark .dialog-tab-panel,
+body.vscode-high-contrast .dialog-body,
+body.vscode-high-contrast .dialog-tab-panel {
+  background: transparent !important;
+  color: #f8fafc !important;
+}
+
+:root[data-theme-effective="dark"] .dialog-section,
+body.vscode-dark .dialog-section,
+body.vscode-high-contrast .dialog-section {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 8px !important;
+}
+
+:root[data-theme-effective="dark"] .dialog-section-title,
+body.vscode-dark .dialog-section-title,
+body.vscode-high-contrast .dialog-section-title {
+  color: #93c5fd !important;
+  font-weight: 650 !important;
+}
+
+:root[data-theme-effective="dark"] .dialog-label,
+:root[data-theme-effective="dark"] .dialog-unit,
+body.vscode-dark .dialog-label,
+body.vscode-dark .dialog-unit,
+body.vscode-high-contrast .dialog-label,
+body.vscode-high-contrast .dialog-unit {
+  color: #e2e8f0 !important;
+}
+
+:root[data-theme-effective="dark"] .dialog-input,
+:root[data-theme-effective="dark"] .dialog-text-input,
+:root[data-theme-effective="dark"] .dialog-select,
+body.vscode-dark .dialog-input,
+body.vscode-dark .dialog-text-input,
+body.vscode-dark .dialog-select,
+body.vscode-high-contrast .dialog-input,
+body.vscode-high-contrast .dialog-text-input,
+body.vscode-high-contrast .dialog-select {
+  background: #141519 !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  color: #ffffff !important;
+  color-scheme: dark !important;
+  caret-color: #60a5fa !important;
+}
+
+:root[data-theme-effective="dark"] .dialog-select option,
+body.vscode-dark .dialog-select option,
+body.vscode-high-contrast .dialog-select option {
+  background: #1a1c22 !important;
+  color: #ffffff !important;
+}
+
+:root[data-theme-effective="dark"] .dialog-input:focus,
+:root[data-theme-effective="dark"] .dialog-text-input:focus,
+:root[data-theme-effective="dark"] .dialog-select:focus,
+body.vscode-dark .dialog-input:focus,
+body.vscode-dark .dialog-text-input:focus,
+body.vscode-dark .dialog-select:focus,
+body.vscode-high-contrast .dialog-input:focus,
+body.vscode-high-contrast .dialog-text-input:focus,
+body.vscode-high-contrast .dialog-select:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.35) !important;
+  outline: none !important;
+}
+
+:root[data-theme-effective="dark"] .icon-radio-card,
+body.vscode-dark .icon-radio-card,
+body.vscode-high-contrast .icon-radio-card {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.16) !important;
+  color: #e2e8f0 !important;
+}
+
+:root[data-theme-effective="dark"] .icon-radio-card:hover,
+body.vscode-dark .icon-radio-card:hover,
+body.vscode-high-contrast .icon-radio-card:hover {
+  border-color: #60a5fa !important;
+  background: rgba(59, 130, 246, 0.15) !important;
+}
+
+:root[data-theme-effective="dark"] .icon-radio-card.selected,
+body.vscode-dark .icon-radio-card.selected,
+body.vscode-high-contrast .icon-radio-card.selected {
+  border-color: #3b82f6 !important;
+  background: rgba(59, 130, 246, 0.25) !important;
+  box-shadow: 0 0 0 1px #3b82f6 !important;
+}
+
+:root[data-theme-effective="dark"] .icon-radio-text,
+body.vscode-dark .icon-radio-text,
+body.vscode-high-contrast .icon-radio-text {
+  color: #ffffff !important;
+}
+
+:root[data-theme-effective="dark"] .dialog-radio-group label,
+body.vscode-dark .dialog-radio-group label,
+body.vscode-high-contrast .dialog-radio-group label {
+  color: #e2e8f0 !important;
+}
+
+:root[data-theme-effective="dark"] .dialog-footer,
+body.vscode-dark .dialog-footer,
+body.vscode-high-contrast .dialog-footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+  background: rgba(24, 26, 32, 0.98) !important;
+}
+
+:root[data-theme-effective="dark"] .dialog-btn:not(.dialog-btn-primary),
+body.vscode-dark .dialog-btn:not(.dialog-btn-primary),
+body.vscode-high-contrast .dialog-btn:not(.dialog-btn-primary) {
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  background: #282a32 !important;
+  color: #ffffff !important;
+}
+
+:root[data-theme-effective="dark"] .dialog-btn:not(.dialog-btn-primary):hover,
+body.vscode-dark .dialog-btn:not(.dialog-btn-primary):hover,
+body.vscode-high-contrast .dialog-btn:not(.dialog-btn-primary):hover {
+  background: #383b45 !important;
+  border-color: rgba(255, 255, 255, 0.35) !important;
+  color: #ffffff !important;
+}
+
+:root[data-theme-effective="dark"] .dialog-close,
+:root[data-theme-effective="dark"] .modal-close-btn,
+body.vscode-dark .dialog-close,
+body.vscode-dark .modal-close-btn,
+body.vscode-high-contrast .dialog-close,
+body.vscode-high-contrast .modal-close-btn {
+  color: #94a3b8 !important;
+}
+
+:root[data-theme-effective="dark"] .dialog-close:hover,
+:root[data-theme-effective="dark"] .modal-close-btn:hover,
+body.vscode-dark .dialog-close:hover,
+body.vscode-dark .modal-close-btn:hover,
+body.vscode-high-contrast .dialog-close:hover,
+body.vscode-high-contrast .modal-close-btn:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+}
+
+/* @media (prefers-color-scheme: dark) 폴백 적용 */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme-effective="light"]) .modal-overlay {
+    background: rgba(0, 0, 0, 0.65) !important;
+    backdrop-filter: blur(14px) !important;
+  }
+  :root:not([data-theme-effective="light"]) .dialog-wrap,
+  :root:not([data-theme-effective="light"]) .dialog-panel,
+  :root:not([data-theme-effective="light"]) .find-dialog,
+  :root:not([data-theme-effective="light"]) .page-setup-dialog,
+  :root:not([data-theme-effective="light"]) .hanul-modal-content {
+    background: rgba(30, 32, 40, 0.98) !important;
+    backdrop-filter: blur(32px) saturate(180%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    box-shadow: 0 28px 72px rgba(0, 0, 0, 0.7), 0 4px 20px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+    color: #f8fafc !important;
+  }
+  :root:not([data-theme-effective="light"]) .dialog-header,
+  :root:not([data-theme-effective="light"]) .dialog-title {
+    background: rgba(24, 26, 32, 0.98) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: #ffffff !important;
+  }
+  :root:not([data-theme-effective="light"]) .dialog-tabs {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  }
+  :root:not([data-theme-effective="light"]) .dialog-tab {
+    color: #94a3b8 !important;
+  }
+  :root:not([data-theme-effective="light"]) .dialog-tab.active,
+  :root:not([data-theme-effective="light"]) .dialog-tab[aria-selected="true"] {
+    background: rgba(255, 255, 255, 0.12) !important;
+    color: #ffffff !important;
+  }
+  :root:not([data-theme-effective="light"]) .dialog-body,
+  :root:not([data-theme-effective="light"]) .dialog-tab-panel {
+    background: transparent !important;
+    color: #f8fafc !important;
+  }
+  :root:not([data-theme-effective="light"]) .dialog-section {
+    background: rgba(255, 255, 255, 0.04) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  }
+  :root:not([data-theme-effective="light"]) .dialog-section-title {
+    color: #93c5fd !important;
+  }
+  :root:not([data-theme-effective="light"]) .dialog-label,
+  :root:not([data-theme-effective="light"]) .dialog-unit {
+    color: #e2e8f0 !important;
+  }
+  :root:not([data-theme-effective="light"]) .dialog-input,
+  :root:not([data-theme-effective="light"]) .dialog-text-input,
+  :root:not([data-theme-effective="light"]) .dialog-select {
+    background: #141519 !important;
+    border: 1px solid rgba(255, 255, 255, 0.22) !important;
+    color: #ffffff !important;
+    color-scheme: dark !important;
+    caret-color: #60a5fa !important;
+  }
+  :root:not([data-theme-effective="light"]) .dialog-select option {
+    background: #1a1c22 !important;
+    color: #ffffff !important;
+  }
+  :root:not([data-theme-effective="light"]) .icon-radio-card {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1.5px solid rgba(255, 255, 255, 0.16) !important;
+    color: #e2e8f0 !important;
+  }
+  :root:not([data-theme-effective="light"]) .icon-radio-card.selected {
+    border-color: #3b82f6 !important;
+    background: rgba(59, 130, 246, 0.25) !important;
+  }
+  :root:not([data-theme-effective="light"]) .icon-radio-text {
+    color: #ffffff !important;
+  }
+  :root:not([data-theme-effective="light"]) .dialog-footer {
+    border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+    background: rgba(24, 26, 32, 0.98) !important;
+  }
+  :root:not([data-theme-effective="light"]) .dialog-btn:not(.dialog-btn-primary) {
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    background: #282a32 !important;
+    color: #ffffff !important;
+  }
+  :root:not([data-theme-effective="light"]) .dialog-close,
+  :root:not([data-theme-effective="light"]) .modal-close-btn {
+    color: #94a3b8 !important;
+  }
 }
 
 /* F11 개체 선택 모드 (Object Selection Mode) */

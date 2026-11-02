@@ -5,50 +5,44 @@
 
 ---
 
-## 👥 에이전트 조직 및 파이프라인 아키텍처
+## 👥 정예 7대 에이전트 조직 및 파이프라인 아키텍처
 
-한울 프로젝트는 AI 에이전트 기반의 2계층 자율 협업 체계로 개발됩니다:
-- **오케스트레이션 계층**: 기획(Planner), UI/UX 디자인(UI/UX Designer), 개발(Developer), QA(QA Verifier)
-- **리버스 엔지니어링 특화 계층**: 바이너리와 포맷을 해독하는 5대 전문 서브 에이전트
+한울 프로젝트는 시행착오와 중복 핑퐁을 방지하기 위해 **7대 정예 에이전트 체제**로 유기적으로 협업합니다:
 
 ```mermaid
 flowchart TD
-    User([사용자 / 메인 오케스트레이터]) --> Planner[📋 기획 에이전트\n.agents/planner.md]
-    Planner --> Designer[🎨 UI/UX 디자인 에이전트\n.agents/ui-ux-designer.md]
+    User([사용자 / 총괄 오케스트레이터]) --> Planner[📋 1. 기획 & 명세 감사\n.agents/planner.md]
     
-    subgraph RE_Pipeline [🔬 리버스 엔지니어링 5대 특화 에이전트]
-        Planner -->|스펙 분석 & 조사 지시| RE_Decompile[🕵️ 정적 디컴파일 분석\n.agents/re-decompile.md]
-        Planner -->|바이트 차이 역산 의뢰| RE_Diff[🔬 동적 디프 추적\n.agents/re-diff-tracer.md]
-        RE_Decompile -->|오프셋/비트필드 도출| RE_Struct[🧬 구조체 복원\n.agents/re-struct.md]
-        RE_Diff -->|필드 시맨틱 식별| RE_Struct
-        RE_Struct -->|Kaitai/데이터 모델 전달| RE_Parser[⚙️ 포맷 & 파서 합성\n.agents/re-parser-synth.md]
-        RE_Parser -->|바이너리 레코드 전달| RE_AST[🌲 AST 변환 & 매핑\n.agents/re-ast-mapper.md]
-    end
+    Planner --> Designer[🎨 2. UI/UX & 테마\n.agents/ui-ux-designer.md]
+    Planner --> RE[🔬 3. 바이너리 & 포맷 RE\n.agents/re-format-engineer.md]
     
-    Designer -->|글래스모피즘 & UI/UX 명세| Developer[💻 개발 에이전트\n.agents/developer.md]
-    RE_AST -->|정규화된 AST & 파서 코드| Developer
-    Developer -->|코어 엔진 API 전달| MCP_Dev[🔌 MCP 개발 에이전트\n.agents/mcp-developer.md]
-    MCP_Dev -->|한컴 17대 표준 MCP 도구 (누름틀 API 포함)| QA[🛡️ QA & 검증 에이전트\n.agents/qa.md]
-    Developer -->|크로스플랫폼 에디터| QA
-    QA -->|라운드트립 / 호환성 피드백| RE_Diff
-    QA -->|시각 검증 피드백| Designer
-    QA -->|검증 결과 보고| Developer
-    QA -->|최종 릴리즈 승인| User
+    Designer -->|글래스모피즘 & 고대비 테마 명세| CoreDev[💻 4. 코어 엔진 개발\n.agents/core-developer.md]
+    RE -->|WASM 파서 & JSON AST 모델| CoreDev
+    
+    CoreDev --> MCP[🔌 5. MCP 도구 개발\n.agents/mcp-developer.md]
+    CoreDev --> Release[📦 6. 릴리즈 & 패키징\n.agents/release-engineer.md]
+    
+    CoreDev --> QA[🛡️ 7. 실측 QA & 비주얼 감사\n.agents/qa-auditor.md]
+    MCP --> QA
+    Release --> QA
+    
+    QA -->|화이트/다크 양방향 실측 통과 & 스샷 검증 완료| User
+    QA -->|가독성 결함 / 선택 트랩 발견 시 즉시 반려| CoreDev
 ```
 
 ---
 
-## 🔬 리버스 엔지니어링 5대 특화 에이전트 R&R
+## 🔬 정예 7대 에이전트 R&R
 
-바이너리 실행 파일(`Hwp.exe`, 렌더링/필터 DLL)과 독자 포맷(HWP/HWPX)을 동시에 파헤치기 위해 5개 특화 에이전트가 유기적으로 맞물립니다.
-
-| 에이전트 | 정의 파일 | 주요 역할 | 연동 도구 및 기술 스택 |
-|---|---|---|---|
-| **정적 디컴파일 분석 (Decompilation Analyst)** | [`.agents/re-decompile.md`](.agents/re-decompile.md) | 어셈블리 및 C 디컴파일 의사코드를 분석해 난해한 서브루틴(`sub_xxxxxx`)의 의도 파악 및 함수명·타입 명명 | Ghidra, IDA Pro, Binary Ninja, MCP |
-| **구조체 복원 (Struct & Type Recovery)** | [`.agents/re-struct.md`](.agents/re-struct.md) | 오프셋 연산(`*(v4 + 0x18)` 등)과 비트 플래그를 역추적해 C/C++/Rust 호환 데이터 구조체 정의 복원 | C 헤더 파서, IDA Local Types, bindgen |
-| **바이너리 포맷 & 파서 합성 (Format & Parser Synthesizer)** | [`.agents/re-parser-synth.md`](.agents/re-parser-synth.md) | OLE/CFB 스트림, zlib 압축 해제, 태그 레코드 구조 분석 및 언어별(Rust/TS/Python) 파서 코드 자동 생성 | Kaitai Struct (`.ksy`), 010 Editor Templates, Python construct |
-| **동적 디프 추적 (Dynamic Diff Tracer)** | [`.agents/re-diff-tracer.md`](.agents/re-diff-tracer.md) | 특정 동작(표 추가, 각주 삽입 등) 전후의 파일 바이트 변화와 메모리/API 호출 흐름을 교차 검증 (Black-box & White-box) | Frida, x64dbg, Process Monitor, VBinDiff |
-| **AST 변환 (Document Model Mapper)** | [`.agents/re-ast-mapper.md`](.agents/re-ast-mapper.md) | 복원된 바이너리 레코드 데이터를 웹/데스크톱 에디터에서 다룰 수 있는 JSON/블록 트리 구조로 정규화 및 라운드트립 검증 | ProseMirror, TipTap, Slate 스키마 |
+| 번호 | 에이전트 명칭 | 정의 파일 | 주요 역할 | 기술 스택 및 산출물 |
+|---|---|---|---|---|
+| **1** | **기획 & 명세 감사 (Planner & Spec Auditor)** | [`.agents/planner.md`](.agents/planner.md) | 한컴 표준 스펙 분석, 기능 추적 매트릭스(`docs/SPEC_AND_TRACKING_MATRIX.md`) 실시간 동기화, QA 실측 통과 전 '완료' 판정 원천 차단 | HWP 5.0 가이드, KS X 6101 XML 명세, Spec Matrix |
+| **2** | **UI/UX & 테마 디자인 (UI/UX & Theme Designer)** | [`.agents/ui-ux-designer.md`](.agents/ui-ux-designer.md) | macOS 글래스모피즘, **다크/라이트 완전 분리 테마 토큰**, 플로팅 HUD, 단축키/IME 무누수 설계, WCAG AAA 명도 대비 설계 | CSS 글래스모피즘, Design Tokens, Mac HIG |
+| **3** | **바이너리 & 포맷 RE (Binary & Format RE Engineer)** | [`.agents/re-format-engineer.md`](.agents/re-format-engineer.md) | HWP 5.0 CFB/OLE 분해, `ViewText` 배포용 AES-128 복호화, Kaitai Struct 명세, Rust/WASM 파서 코드 합성 및 AST 정규화 매핑 | Ghidra, Frida, Kaitai Struct, Rust nom, ProseMirror AST |
+| **4** | **코어 엔진 개발 (Core Engine Developer)** | [`.agents/core-developer.md`](.agents/core-developer.md) | Rust/WASM 코어 파서, 에디터 캔버스 렌더러, DOM 이벤트 루프, CSS 2계층 테마 분리 실구현 | Rust/WASM, TypeScript, ProseMirror, Vite |
+| **5** | **MCP 도구 개발 (MCP Developer)** | [`.agents/mcp-developer.md`](.agents/mcp-developer.md) | 한컴 17대 표준 MCP 도구(누름틀, 표 조작, 메타데이터, 보안 등) 및 AI Agent 표준 Tool Contract 구현 | Model Context Protocol SDK, JSON Schema |
+| **6** | **릴리즈 & 패키징 (Release & Packaging Engineer)** | [`.agents/release-engineer.md`](.agents/release-engineer.md) | macOS `Hanul.app` 번들링, 코드사인, xattr 격리 해제, 시스템 `/Applications` 설치 동기화, Windows/Linux 설치 가이드 최신화 | `build-mac-app.sh`, Apple `codesign`, `@vscode/vsce` |
+| **7** | **실측 QA & 비주얼 감사 (QA & Visual Auditor)** | [`.agents/qa-auditor.md`](.agents/qa-auditor.md) | **실물 런타임 실측(Ground-Truth) 전담**, Playwright 헤드리스 스샷 자동화, 명도 대비 측정, 무손실 라운드트립 검증 | Playwright, Chromium, Jest, Pixelmatch, WCAG Formula |
 
 ---
 
@@ -59,7 +53,7 @@ flowchart TD
 ### 1. 공식 개방 스펙 및 실물 환경을 그라운드 트루스(Ground Truth)로 제공
 - 과거 배포된 **HWP 5.0 바이너리 파일 포맷 가이드**와 개방형 표준인 **HWPX(KS X 6101 / OWPML) 표준 XML 명세서**를 기본 지식베이스로 삼습니다.
 - **실물 렌더링 그라운드 트루스(Visual Ground Truth)**: 개발자 머신(macOS)에 설치된 공식 **한컴오피스 한글 Viewer**의 렌더링 화면과 `tests/fixtures/` 내 실제 공문서/공모전 HWP 파일들을 정답지(Golden Reference)로 삼아 레이아웃 왜곡, 표 테두리, 이미지 배치를 교차 검증합니다.
-- **바이너리 바이너리 그라운드 트루스(Binary Ground Truth)**: `tests/fixtures/` 내 실무 한글 파일들의 OLE 스트림(`DocInfo`, `BodyText`, `ViewText`, `BinData`)을 바이트 단위로 검증합니다.
+- **바이너리 그라운드 트루스(Binary Ground Truth)**: `tests/fixtures/` 내 실무 한글 파일들의 OLE 스트림(`DocInfo`, `BodyText`, `ViewText`, `BinData`)을 바이트 단위로 검증합니다.
 
 ### 2. HWPX 우선 분석 및 표준 AST 모델 선(先)구축
 - 바이너리(CFB) 파싱보다 ZIP 압축 기반의 XML 구조인 HWPX를 먼저 파싱하여 현대적인 **문서 데이터 모델(JSON AST)**을 먼저 확립합니다. 이 AST를 기준으로 HWP 바이너리 역공학 결과를 매핑합니다.
@@ -67,15 +61,6 @@ flowchart TD
 ### 3. 미공개 레코드 및 배포용 문서 타깃 역공학 (Targeted RE)
 - **배포용 문서(`ViewText`) 복호화**: `BodyText`가 더미 안내문으로 잠긴 배포용 문서는 `ViewText/Section*` 내 `HWPTAG_DISTRIBUTE_DOC_DATA (0x1c)`의 시드 기반 난수 생성 및 AES-128-ECB 복호화 파이프라인을 거쳐 원본 표/서식을 100% 복원하고 편집 가능 상태로 승격(Unlock)합니다.
 - 최신 한컴 버전에서 추가된 신규 태그, 확장 컨트롤, 암호화/보안 처리 로직, 미문서화된 레거시 속성에 리버스 엔지니어링 에이전트를 집중 투입합니다.
-
----
-
-## 📜 과거 레거시 포맷(HWP 97 / 3.0 / 5.x 구버전) 호환성 원칙
-
-1. **레거시 문서 디지털 보존(Digital Preservation)**:
-   - 공공기록물, 고문서 아카이브에 존재하는 HWP 3.0, HWP 97 포맷의 시그니처와 2바이트 완성형/조합형(KSSM/EUC-KR) 한글 텍스트를 무손실 복원합니다.
-2. **현대화(Modernization) 파이프라인**:
-   - 구형 레거시 포맷을 읽었을 때 이를 현대적 HWPX 또는 Markdown으로 즉시 변환할 수 있는 승격(Promotion) 파서를 기본 탑재합니다.
 
 ---
 
@@ -108,24 +93,25 @@ flowchart TD
     - **QA 미검증 기능 즉시 강등 원칙**: 명세서에 존재하는 기능 중 자동화 회귀 테스트나 실측 E2E 테스트가 연결되지 않은 항목은 지체 없이 🟡(미검증/결함추적) 상태로 강등하여 투명하게 관리합니다.
     - **인터랙션 트랩 원천 방지 (Zero Selection Traps)**: 개체 배치(BehindText, 직인/서명, Z-Order, 투명 레이어 등) 시 사용자가 마우스나 한컴 표준 단축키(`F11` 개체선택, `Alt+클릭` 레이어순환)로 해당 개체를 다시 선택·이동·수정할 수 없는 '선택 불가 트랩(Selection Trap)'이 발생하지 않도록 상호작용 무결성을 100% 보장해야 합니다.
     - **스텁(Stub) 대화상자 방지**: UI 메뉴나 단축키가 연결되어 있으면서 실제 기능 대화상자가 뜨지 않거나 반응이 없는 스텁 명령은 즉시 실구현을 완료하거나 결손(Missing)으로 명확히 추적해야 합니다.
+11. **다크모드/라이트모드 완전 분리 및 가독성 절대 사수 원칙 (Strict Theme Isolation & High-Contrast Readability Charter)**:
+    - **테마 혼용 및 충돌 원천 금지 (Zero Theme Collisions)**: 다크 모드와 라이트 모드는 독립된 테마 계층으로 100% 분리하여 관리해야 합니다. 모달창, 툴바, 캔버스, 인풋, 드롭다운 셀렉트, 버튼 등에 단일 하드코딩된 색상(예: 다크모드에 흰색 인풋/푸터 강제 적용 등)을 주입하여 스타일이 충돌하는 행위는 엄격히 금지됩니다.
+    - **가독성 결함 제로 (Zero Invisible Text - WCAG AAA 준수)**: '흰색 배경에 흰색 글씨(White-on-White)'나 '어두운 배경에 어두운 글씨(Dark-on-Dark)'로 인해 수치나 텍스트가 식별되지 않는 가독성 결함은 P0 최고 등급 결함으로 취급합니다. 모든 텍스트, 숫자 스테퍼, 라벨, 플레이스홀더, 드롭다운 옵션은 배경색과 최소 4.5:1 (본문 7:1) 이상의 명도 대비를 유지해야 합니다.
+    - **양방향 테마 실측 필수 (Dual Theme Verification)**: UI/UX 변경 시 QA 에이전트는 반드시 라이트 모드(`colorScheme: 'light'`)와 다크 모드(`colorScheme: 'dark'`) 양쪽 환경 모두에서 스크린샷 캡처 및 대비 실측 테스트를 통과시켜야 하며, 한쪽 모드만 통과한 상태에서의 완료 처리는 엄격히 금지됩니다.
 
 ---
 
-## 📁 에이전트 디렉토리 구조
+## 📁 정예 에이전트 디렉토리 구조
 
 ```
 hanul-hwpx/
 ├── AGENTS.md                     # 에이전트 협업 헌장 (본 문서)
 ├── .agents/
-│   ├── planner.md                # 📋 기획 에이전트 가이드
-│   ├── ui-ux-designer.md         # 🎨 UI/UX 디자인 에이전트 가이드 (글래스모피즘 & Mac HIG)
-│   ├── developer.md              # 💻 개발 에이전트 가이드
-│   ├── mcp-developer.md          # 🔌 MCP 개발 에이전트 가이드 (한컴 전 기능 MCP화)
-│   ├── qa.md                     # 🛡️ QA & 검증 에이전트 가이드
-│   ├── re-decompile.md           # 🕵️ 정적 디컴파일 분석 에이전트
-│   ├── re-struct.md              # 🧬 구조체 복원 에이전트
-│   ├── re-parser-synth.md        # ⚙️ 바이너리 포맷 & 파서 합성 에이전트
-│   ├── re-diff-tracer.md         # 🔬 동적 디프 추적 에이전트
-│   └── re-ast-mapper.md          # 🌲 AST 변환 에이전트
+│   ├── planner.md                # 📋 1. 기획 & 명세 감사 에이전트
+│   ├── ui-ux-designer.md         # 🎨 2. UI/UX & 테마 디자인 에이전트
+│   ├── re-format-engineer.md     # 🔬 3. 바이너리 & 포맷 RE 에이전트
+│   ├── core-developer.md         # 💻 4. 코어 엔진 개발 에이전트
+│   ├── mcp-developer.md          # 🔌 5. MCP 도구 개발 에이전트
+│   ├── release-engineer.md       # 📦 6. 릴리즈 & 패키징 에이전트
+│   └── qa-auditor.md             # 🛡️ 7. 실측 QA & 비주얼 감사 에이전트
 └── README.md                     # 프로젝트 비전 및 공식 안내
 ```

@@ -50,8 +50,9 @@
 - 메뉴/단축키로 연결된 모달은 스텁이나 무반응 상태를 허용하지 않으며, `insert:hyperlink`, `format:bullet-shape`, `table:border-one` 등 결손 대화상자를 온전히 구현합니다.
 - `Alt+T`(문단 모양) 등 대화상자에서 설정한 서식은 WASM 코어 단락 상태와 즉시 양방향 동기화되어야 합니다.
 
-### 11. 모달 다이얼로그 macOS 글래스모피즘 테마 통일
-- `vendor/studio`에서 상속받은 회색 플랫 Win98 대화상자 테마를 `media/host.css`의 Frosted Glass 테마(`backdrop-filter: blur(28px)`, 캡슐 탭)로 일괄 전환하여 UI 일관성을 보장합니다.
+### 11. 모달 다이얼로그 macOS 글래스모피즘 테마 및 다크/라이트 모드 완전 분리 의무
+- 단일 하드코딩된 색상 주입을 엄격히 금지하며, `:root:not([data-theme-effective=dark])` (라이트 모드)와 `:root[data-theme-effective=dark]` / `@media (prefers-color-scheme: dark)` (다크 모드)의 2계층 전용 스타일을 완벽하게 분리하여 구현합니다.
+- 특히 다크 모드에서 인풋 배경(`#141519`)과 글자색(`#ffffff`), 버튼, 푸터(`#181a20`)가 완벽한 조화를 이루도록 하여 '흰색 배경에 흰 글씨(White-on-White)'나 푸터 흰색 띠 등 가독성 결함을 원천 차단합니다.
 
 ---
 
