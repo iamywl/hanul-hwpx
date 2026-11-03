@@ -180,16 +180,90 @@
     }
   };
 
+  const isCurrentCellProtected = (ih) => {
+    if (!ih) return false;
+    if (ih.cursor?.isProtectedCellSelectionMode?.()) return true;
+    try {
+      const pos = ih.cursor?.getPosition?.();
+      const wasm = ih.wasm || engine()?.getWasm?.();
+      if (wasm && pos && pos.parentParaIndex !== undefined && pos.controlIndex !== undefined && pos.cellIndex !== undefined) {
+        return wasm.getCellProperties?.(pos.sectionIndex, pos.parentParaIndex, pos.controlIndex, pos.cellIndex)?.cellProtect === true;
+      }
+    } catch {}
+    return false;
+  };
+
+  const toggleActiveCellProtection = () => {
+    const ih = engine()?.getInputHandler?.();
+    const wasm = ih?.wasm || engine()?.getWasm?.();
+    const pos = ih?.cursor?.getPosition?.();
+    if (!ih || !wasm || !pos || pos.parentParaIndex === undefined || pos.controlIndex === undefined || pos.cellIndex === undefined) {
+      notice('먼저 표 셀을 클릭하거나 선택해 주세요.');
+      return false;
+    }
+    const currentlyProtected = isCurrentCellProtected(ih);
+    const nextProtected = !currentlyProtected;
+    try {
+      ih.executeOperation?.({
+        kind: 'snapshot',
+        operationType: 'cellProtectToggle',
+        operation: (w) => {
+          w.setCellProperties?.(pos.sectionIndex, pos.parentParaIndex, pos.controlIndex, pos.cellIndex, { cellProtect: nextProtected });
+          return ih.cursor?.getPosition?.();
+        }
+      });
+      ih.protectedCellHitCache = null;
+      if (!nextProtected) {
+        if (ih.protectedCellHoverEl) ih.protectedCellHoverEl.style.display = 'none';
+        if (ih.container?.style?.cursor === 'not-allowed') ih.container.style.cursor = '';
+        if (ih.cursor?.isInCellSelectionMode?.()) {
+          ih.cursor.exitCellSelectionMode?.();
+          ih.cellSelectionRenderer?.clear?.();
+        }
+        ih.active = true;
+        ih.updateCaret?.();
+        ih.textarea?.focus?.();
+        notice('🔓 셀 보호가 해제되었습니다. 이제 자유롭게 텍스트를 입력할 수 있습니다.');
+      } else {
+        ih.cursor?.enterCellSelectionMode?.('protected');
+        ih.caret?.hide?.();
+        ih.selectionRenderer?.clear?.();
+        ih.updateCellSelection?.();
+        notice('🔒 현재 셀에 [셀 보호]가 설정되었습니다.');
+      }
+      version++;
+      state('변경됨 · 저장 필요');
+      debouncedPostChanged();
+      updateTableHudState();
+      return true;
+    } catch (err) {
+      console.warn('셀 보호 토글 실패:', err);
+      return false;
+    }
+  };
+  window.__hanulToggleCellProtect = toggleActiveCellProtection;
+  window.__hanulOnProtectedCellInput = () => {
+    notice('🔒 현재 셀은 [셀 보호]가 설정되어 편집이 잠겨 있습니다. [Tab] 키로 다음 칸으로 이동하거나 표 도구의 [🔓 보호해제] 버튼을 누르세요.');
+  };
+
   const updateTableHudState = () => {
     const ih = engine()?.getInputHandler?.();
     const hud = document.getElementById('hanul-table-bar') || document.getElementById('hanul-table-hud');
     const isInCell = !!(ih?.cursor?.isInCell?.());
     const isCellSel = !!(ih?.cursor?.isInCellSelectionMode?.());
     const isTableObj = !!(ih?.cursor?.isInTableObjectSelection?.());
+    const isProt = isCurrentCellProtected(ih);
     const inTable = isInCell || isCellSel || isTableObj;
 
     if (hud) {
       hud.classList.toggle('is-active', inTable);
+    }
+
+    const protBtn = document.getElementById('hanul-btn-cell-protect');
+    if (protBtn) {
+      protBtn.textContent = isProt ? '🔓 보호해제' : '🔒 셀보호';
+      protBtn.classList.toggle('accent', isProt);
+      protBtn.title = isProt ? '현재 셀의 보호 잠금을 즉시 해제하고 편집합니다' : '현재 셀을 편집되지 않도록 보호 잠금합니다';
     }
 
     const markerEl = document.getElementById('hanul-hud-marker');
@@ -199,6 +273,12 @@
     if (!inTable) {
       markerEl.className = 'hud-marker marker-none';
       textEl.textContent = 'F5 셀선택';
+      return;
+    }
+
+    if (ih?.cursor?.isProtectedCellSelectionMode?.()) {
+      markerEl.className = 'hud-marker marker-range';
+      textEl.textContent = '🔒 셀 보호됨 (Tab 이동)';
       return;
     }
 
@@ -377,7 +457,25 @@
   };
   window.__hanulFormatCopy = performFormatCopyInteractive;
 
-  // --- 한컴 표준 개체선택(F11) 및 BehindText(글 뒤로) 선택 결함 해결 패치 ---
+  // --- 한컴 표준 개체선택(F11), Alt+클릭 레이어 순환 및 BehindText(글 뒤로) 정밀 히트테스트 패치 ---
+  const PIC_CONTROL_TYPES = new Set(['image', 'shape', 'equation', 'group', 'line', 'ole']);
+  let altCycleState = { pageIdx: -1, x: -9999, y: -9999, index: -1 };
+
+  const toPicResult = (c) => ({
+    sec: c.secIdx,
+    ppi: c.paraIdx,
+    ci: c.controlIdx,
+    type: c.type || 'image',
+    wrap: c.wrap,
+    cellIdx: c.cellIdx,
+    cellParaIdx: c.cellParaIdx,
+    outerTableControlIdx: c.outerTableControlIdx,
+    cellPath: c.cellPath,
+    noteRef: c.noteRef,
+    headerFooter: c.headerFooter,
+    missing: c.missing
+  });
+
   const setupBehindTextHitTestPatch = () => {
     const ih = engine()?.getInputHandler?.();
     if (!ih || ih.__behindTextPatched) return;
@@ -387,60 +485,77 @@
     ih.findPictureAtClick = function(pageIdx, x, y) {
       const isAltHeld = !!window.__hanulAltKeyHeld;
       const isObjMode = !!window.__hanulObjectSelectionMode;
-
       const wasm = this.wasm || engine()?.getWasm?.();
-      // Alt가 눌렸거나 F11 개체선택 모드인 경우: 뒤에 배치된 BehindText 개체를 최우선 탐색
+
+      // 1. Alt+클릭(레이어 순환) 또는 F11 개체선택 모드: 그림/도형/수식/선 개체를 최우선 탐색 (표 'table' 제외)
       if (wasm && (isAltHeld || isObjMode)) {
         try {
           const raw = wasm.getPageControlLayout(pageIdx);
           const layout = typeof raw === 'string' ? JSON.parse(raw) : raw;
-          for (const c of (layout?.controls || [])) {
-            if (x >= c.x && x <= c.x + c.w && y >= c.y && y <= c.y + c.h) {
-              return {
-                sec: c.secIdx,
-                ppi: c.paraIdx,
-                ci: c.controlIdx,
-                type: c.type || 'image',
-                wrap: c.wrap,
-                cellIdx: c.cellIdx,
-                cellParaIdx: c.cellParaIdx,
-                outerTableControlIdx: c.outerTableControlIdx,
-                cellPath: c.cellPath,
-                noteRef: c.noteRef,
-                headerFooter: c.headerFooter,
-                missing: c.missing
-              };
+          const matches = (layout?.controls || []).filter(c =>
+            c && PIC_CONTROL_TYPES.has(c.type || 'image') &&
+            c.secIdx !== undefined && c.paraIdx !== undefined && c.controlIdx !== undefined &&
+            x >= c.x && x <= c.x + c.w && y >= c.y && y <= c.y + c.h
+          );
+          if (matches.length > 0) {
+            if (isAltHeld && matches.length > 1) {
+              const sameSpot = altCycleState.pageIdx === pageIdx && Math.hypot(altCycleState.x - x, altCycleState.y - y) < 12;
+              const nextIdx = sameSpot ? (altCycleState.index + 1) % matches.length : 0;
+              altCycleState = { pageIdx, x, y, index: nextIdx };
+              return toPicResult(matches[nextIdx]);
             }
+            // BehindText 개체를 우선 선택하되 없으면 최상단 개체 반환
+            const behind = matches.find(c => c.wrap === 'behindText' || c.wrap === 'BehindText' || c.wrap === 3);
+            return toPicResult(behind || matches[matches.length - 1]);
           }
         } catch (e) {}
       }
 
-      // 기본 히트테스트 실행
+      // 2. 일반 클릭 모드: 원본 히트테스트 실행 (단, 표(table)는 절대 그림 개체로 반환하지 않음)
       const orig = originalFind ? originalFind.call(this, pageIdx, x, y) : null;
-      if (orig) return orig;
+      if (orig) {
+        if (!PIC_CONTROL_TYPES.has(orig.type)) return null;
+        // 일반 클릭 시 빈 표 셀 위에 BehindText 워터마크/도장이 깔려 있으면 표 셀 텍스트 커서 진입을 우선 보장
+        if (wasm) {
+          try {
+            const hit = wasm.hitTest?.(pageIdx, x, y);
+            if (hit && hit.parentParaIndex !== undefined && hit.controlIndex !== undefined && !hit.isTextBox) {
+              const raw = wasm.getPageControlLayout(pageIdx);
+              const layout = typeof raw === 'string' ? JSON.parse(raw) : raw;
+              const matchedCtrl = (layout?.controls || []).find(c =>
+                c.secIdx === orig.sec && c.paraIdx === orig.ppi && c.controlIdx === orig.ci
+              );
+              if (matchedCtrl && (matchedCtrl.wrap === 'behindText' || matchedCtrl.wrap === 'BehindText' || matchedCtrl.wrap === 3)) {
+                return null;
+              }
+            }
+          } catch {}
+        }
+        return orig;
+      }
 
-      // [핵심 결함 해결] 본문 단락 행과 겹쳐서 원본 함수가 null을 반환한 경우 (Yu() 단락 가로챔),
-      // 실제 컨트롤(도장/서명 등 behindText 개체) 범위 안에 있는지 보강 검색하여 반환
+      // 3. 원본이 null인 경우: 빈 여백/비텍스트 영역에 놓인 BehindText 그림/서명 개체만 안전하게 보강 탐색
+      //    (표 'table' 컨트롤이나 실제 텍스트/표 셀 내부 클릭은 절대 가로채지 않음)
       if (wasm) {
         try {
-          const raw = wasm.getPageControlLayout(pageIdx);
-          const layout = typeof raw === 'string' ? JSON.parse(raw) : raw;
-          for (const c of (layout?.controls || [])) {
-            if (x >= c.x && x <= c.x + c.w && y >= c.y && y <= c.y + c.h) {
-              return {
-                sec: c.secIdx,
-                ppi: c.paraIdx,
-                ci: c.controlIdx,
-                type: c.type || 'image',
-                wrap: c.wrap,
-                cellIdx: c.cellIdx,
-                cellParaIdx: c.cellParaIdx,
-                outerTableControlIdx: c.outerTableControlIdx,
-                cellPath: c.cellPath,
-                noteRef: c.noteRef,
-                headerFooter: c.headerFooter,
-                missing: c.missing
-              };
+          let blockedByTextOrCell = false;
+          try {
+            const hit = wasm.hitTest?.(pageIdx, x, y);
+            if (hit && ((hit.parentParaIndex !== undefined && hit.controlIndex !== undefined) || (typeof hit.charOffset === 'number' && hit.charOffset > 0))) {
+              blockedByTextOrCell = true;
+            }
+          } catch {}
+          if (!blockedByTextOrCell) {
+            const raw = wasm.getPageControlLayout(pageIdx);
+            const layout = typeof raw === 'string' ? JSON.parse(raw) : raw;
+            for (const c of (layout?.controls || [])) {
+              const ctrlType = c.type || 'image';
+              if (!PIC_CONTROL_TYPES.has(ctrlType)) continue;
+              const isBehind = c.wrap === 'behindText' || c.wrap === 'BehindText' || c.wrap === 3;
+              if (!isBehind) continue;
+              if (x >= c.x && x <= c.x + c.w && y >= c.y && y <= c.y + c.h) {
+                return toPicResult(c);
+              }
             }
           }
         } catch (e) {}
@@ -519,29 +634,27 @@
     `;
     modal.style.display = 'flex';
 
-    const close = () => { modal.style.display = 'none'; };
+    const close = () => { modal.style.display = 'none'; ih?.textarea?.focus?.(); };
     modal.querySelector('#hanul-hyperlink-close').onclick = close;
     modal.querySelector('#hanul-hyperlink-cancel').onclick = close;
     modal.querySelector('#hanul-hyperlink-confirm').onclick = () => {
       const text = modal.querySelector('#hanul-link-text').value.trim();
       const url = modal.querySelector('#hanul-link-url').value.trim();
       if (!url || url === 'https://') {
-        alert('연결할 대상 주소를 입력해 주세요.');
+        notice('⚠️ 연결할 대상 주소(URL 또는 메일 주소)를 입력해 주세요.');
+        modal.querySelector('#hanul-link-url')?.focus();
         return;
       }
       try {
-        if (text && (!ih?.cursor?.hasSelection?.())) {
-          const pos = ih?.getPosition?.();
-          if (pos && ih.wasm) {
-            ih.executeOperation?.({
-              kind: 'snapshot',
-              operationType: 'insertText',
-              operation: (wasm) => {
-                wasm.insertText?.(pos.sectionIndex, pos.paragraphIndex, pos.charOffset, text);
-                return { ...pos, charOffset: pos.charOffset + text.length };
-              }
-            });
-          }
+        const insertStr = text || url;
+        if (insertStr && !ih?.cursor?.hasSelection?.() && ih?.textarea) {
+          close();
+          ih.active = true;
+          ih.textarea.focus();
+          ih.textarea.value = insertStr;
+          ih.textarea.dispatchEvent(new InputEvent('input', { inputType: 'insertText', data: insertStr, bubbles: true }));
+          notice(`🔗 하이퍼링크가 삽입되었습니다: ${url}`);
+          return;
         }
         notice(`🔗 하이퍼링크가 설정되었습니다: ${url}`);
       } catch (e) {
@@ -576,13 +689,19 @@
             <button class="dialog-tab active" data-tab="bullet" style="flex:1;">글머리표(B)</button>
             <button class="dialog-tab" data-tab="numbering" style="flex:1;">문단 번호(N)</button>
           </div>
-          <div class="bullet-grid" style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 12px 0;">
-            <button class="bullet-opt active" data-char="●" style="padding:14px; border-radius:8px; border:1px solid rgba(0,0,0,0.15); background:rgba(255,255,255,0.7); font-size:16px; cursor:pointer;">● 큰 점</button>
-            <button class="bullet-opt" data-char="◦" style="padding:14px; border-radius:8px; border:1px solid rgba(0,0,0,0.15); background:rgba(255,255,255,0.7); font-size:16px; cursor:pointer;">◦ 빈 원</button>
-            <button class="bullet-opt" data-char="■" style="padding:14px; border-radius:8px; border:1px solid rgba(0,0,0,0.15); background:rgba(255,255,255,0.7); font-size:16px; cursor:pointer;">■ 네모</button>
-            <button class="bullet-opt" data-char="✓" style="padding:14px; border-radius:8px; border:1px solid rgba(0,0,0,0.15); background:rgba(255,255,255,0.7); font-size:16px; cursor:pointer;">✓ 체크</button>
-            <button class="bullet-opt" data-char="◆" style="padding:14px; border-radius:8px; border:1px solid rgba(0,0,0,0.15); background:rgba(255,255,255,0.7); font-size:16px; cursor:pointer;">◆ 마름모</button>
-            <button class="bullet-opt" data-char="-" style="padding:14px; border-radius:8px; border:1px solid rgba(0,0,0,0.15); background:rgba(255,255,255,0.7); font-size:16px; cursor:pointer;">- 대시</button>
+          <div id="hanul-bullet-grid" class="bullet-grid" style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 12px 0;">
+            <button type="button" class="bullet-opt active" data-char="●">● 큰 점</button>
+            <button type="button" class="bullet-opt" data-char="◦">◦ 빈 원</button>
+            <button type="button" class="bullet-opt" data-char="■">■ 네모</button>
+            <button type="button" class="bullet-opt" data-char="✓">✓ 체크</button>
+            <button type="button" class="bullet-opt" data-char="◆">◆ 마름모</button>
+            <button type="button" class="bullet-opt" data-char="-">- 대시</button>
+          </div>
+          <div id="hanul-numbering-grid" class="bullet-grid" style="display:none; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 12px 0;">
+            <button type="button" class="bullet-opt active" data-num="1">1. 2. 3. (아라비아 숫자)</button>
+            <button type="button" class="bullet-opt" data-num="ga">가. 나. 다. (한글 가나다)</button>
+            <button type="button" class="bullet-opt" data-num="paren">(1) (2) (3) (괄호 숫자)</button>
+            <button type="button" class="bullet-opt" data-num="circle">① ② ③ (원 문자)</button>
           </div>
         </div>
         <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:8px;">
@@ -593,30 +712,52 @@
     `;
     modal.style.display = 'flex';
 
+    let activeTab = 'bullet';
     let selectedBullet = '●';
-    modal.querySelectorAll('.bullet-opt').forEach(opt => {
-      opt.onclick = () => {
-        modal.querySelectorAll('.bullet-opt').forEach(o => {
-          o.classList.remove('active');
-          o.style.borderColor = 'rgba(0,0,0,0.15)';
-          o.style.background = 'rgba(255,255,255,0.7)';
-        });
-        opt.classList.add('active');
-        opt.style.borderColor = '#2563eb';
-        opt.style.background = 'rgba(37, 99, 235, 0.12)';
-        selectedBullet = opt.dataset.char;
+    const bulletGrid = modal.querySelector('#hanul-bullet-grid');
+    const numGrid = modal.querySelector('#hanul-numbering-grid');
+
+    modal.querySelectorAll('.dialog-tab').forEach(tab => {
+      tab.onclick = () => {
+        modal.querySelectorAll('.dialog-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        activeTab = tab.dataset.tab || 'bullet';
+        if (bulletGrid) bulletGrid.style.display = activeTab === 'bullet' ? 'grid' : 'none';
+        if (numGrid) numGrid.style.display = activeTab === 'numbering' ? 'grid' : 'none';
       };
     });
 
-    const close = () => { modal.style.display = 'none'; };
+    modal.querySelectorAll('#hanul-bullet-grid .bullet-opt').forEach(opt => {
+      opt.onclick = () => {
+        modal.querySelectorAll('#hanul-bullet-grid .bullet-opt').forEach(o => o.classList.remove('active'));
+        opt.classList.add('active');
+        selectedBullet = opt.dataset.char;
+      };
+    });
+    modal.querySelectorAll('#hanul-numbering-grid .bullet-opt').forEach(opt => {
+      opt.onclick = () => {
+        modal.querySelectorAll('#hanul-numbering-grid .bullet-opt').forEach(o => o.classList.remove('active'));
+        opt.classList.add('active');
+      };
+    });
+
+    const close = () => { modal.style.display = 'none'; ih?.textarea?.focus?.(); };
     modal.querySelector('#hanul-bullet-close').onclick = close;
     modal.querySelector('#hanul-bullet-cancel').onclick = close;
     modal.querySelector('#hanul-bullet-confirm').onclick = () => {
       try {
-        ih?.toggleBullet?.(selectedBullet);
-        notice(`◦ 글머리표 '${selectedBullet}' 가 적용되었습니다.`);
+        if (activeTab === 'numbering') {
+          ih?.toggleNumbering?.();
+          notice('🔢 문단 번호 서식이 적용되었습니다.');
+        } else if (ih?.applyBullet) {
+          ih.applyBullet(selectedBullet);
+          notice(`◦ 글머리표 '${selectedBullet}' 가 적용되었습니다.`);
+        } else {
+          ih?.toggleBullet?.(selectedBullet);
+          notice(`◦ 글머리표 '${selectedBullet}' 가 적용되었습니다.`);
+        }
       } catch (e) {
-        console.warn('글머리표 적용 실패:', e);
+        console.warn('글머리표/번호 적용 실패:', e);
       }
       close();
     };
@@ -627,6 +768,34 @@
   const setupDispatcherOverrides = () => {
     const disp = engine()?.getDispatcher?.();
     if (disp) {
+      disp.register?.({
+        id: 'file:open',
+        label: '불러오기(O)...',
+        shortcutLabel: 'Ctrl+O',
+        canExecute: () => true,
+        execute: () => post({ type: 'open' })
+      });
+      disp.register?.({
+        id: 'file:new-doc',
+        label: '새 문서(N)',
+        shortcutLabel: 'Alt+N',
+        canExecute: () => true,
+        execute: () => post({ type: 'new' })
+      });
+      disp.register?.({
+        id: 'file:save',
+        label: '저장하기(S)',
+        shortcutLabel: 'Ctrl+S',
+        canExecute: () => loaded,
+        execute: () => { if (!loaded) return; state('저장 중…'); post({ type: 'save' }); }
+      });
+      disp.register?.({
+        id: 'file:save-as',
+        label: '다른 이름으로 저장하기(A)...',
+        shortcutLabel: 'Ctrl+Shift+S',
+        canExecute: () => loaded,
+        execute: () => { if (!loaded) return; state('저장 중…'); post({ type: 'saveAs' }); }
+      });
       disp.register?.({
         id: 'insert:hyperlink',
         label: '하이퍼링크(H)...',
@@ -689,16 +858,20 @@
   window.addEventListener('keyup', e => {
     if (e.key === 'Alt') window.__hanulAltKeyHeld = false;
   }, true);
+  window.addEventListener('blur', () => {
+    window.__hanulAltKeyHeld = false;
+  });
 
   // 마우스 클릭 시 개체 선택 모드(F11) 또는 Alt+클릭 레이어 순환 인터셉터
   document.addEventListener('mousedown', (e) => {
     if (!window.__hanulObjectSelectionMode && !e.altKey) return;
+    if (e.target?.closest?.('#studio-header, .hanul-table-hud, .hanul-image-hud, .modal-overlay, .hanul-modal-overlay, .dialog-panel')) return;
     const ih = engine()?.getInputHandler?.();
     if (!ih) return;
     const pt = ih.pagePointFromClientPoint?.(e.clientX, e.clientY);
     if (!pt) return;
     const pic = ih.findPictureAtClick?.(pt.pageIdx, pt.pageX, pt.pageY);
-    if (pic) {
+    if (pic && PIC_CONTROL_TYPES.has(pic.type)) {
       e.preventDefault();
       e.stopImmediatePropagation();
       ih.cursor?.clearSelection?.();
@@ -711,6 +884,35 @@
       ih.eventBus?.emit?.('picture-object-selection-changed', true);
       updateImageHudState();
       notice(`🎯 [개체 선택 완료] ${pic.type === 'image' ? '서명/그림' : pic.type} 개체가 선택되었습니다. (드래그로 이동 가능)`);
+      return;
+    }
+    // F11 개체 선택 모드에서 표(table) 컨트롤 영역을 클릭한 경우 정식 표 개체 선택(8개 조절점)으로 진입
+    if (window.__hanulObjectSelectionMode) {
+      const wasm = ih.wasm || engine()?.getWasm?.();
+      if (wasm) {
+        try {
+          const raw = wasm.getPageControlLayout(pt.pageIdx);
+          const layout = typeof raw === 'string' ? JSON.parse(raw) : raw;
+          const tbl = (layout?.controls || []).find(c =>
+            c && c.type === 'table' &&
+            pt.pageX >= c.x && pt.pageX <= c.x + c.w && pt.pageY >= c.y && pt.pageY <= c.y + c.h
+          );
+          if (tbl && tbl.secIdx !== undefined && tbl.paraIdx !== undefined && tbl.controlIdx !== undefined) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            ih.cursor?.clearSelection?.();
+            ih.exitPictureObjectSelectionIfNeeded?.();
+            ih.cursor?.enterTableObjectSelectionDirect?.(tbl.secIdx, tbl.paraIdx, tbl.controlIdx);
+            ih.active = true;
+            ih.caret?.hide?.();
+            ih.selectionRenderer?.clear?.();
+            ih.renderTableObjectSelection?.();
+            ih.eventBus?.emit?.('table-object-selection-changed', true);
+            updateTableHudState();
+            notice('🎯 [표 개체 선택 완료] 표 외곽 8개 조절점으로 크기를 조절하거나 이동할 수 있습니다.');
+          }
+        } catch {}
+      }
     }
   }, true);
 
@@ -724,13 +926,14 @@
         toggleObjectSelectionMode(false);
         return;
       }
-      const activeDialogs = Array.from(document.querySelectorAll('.modal-overlay, .hanul-modal-overlay, .find-dialog, .page-setup-dialog, .dialog-panel'));
+      const activeDialogs = Array.from(document.querySelectorAll('.modal-overlay, .hanul-modal-overlay, .find-dialog, .page-setup-dialog, .dialog-panel')).filter(el => el.style.display !== 'none' && !el.hidden);
       if (activeDialogs.length > 0) {
         const topDialog = activeDialogs[activeDialogs.length - 1];
-        if (topDialog.id === 'hanul-hyperlink-modal' || topDialog.id === 'hanul-bullet-modal') {
+        if (topDialog.id === 'hanul-hyperlink-modal' || topDialog.id === 'hanul-bullet-modal' || topDialog.id === 'hanul-warning-modal') {
           topDialog.style.display = 'none';
           event.preventDefault();
           event.stopImmediatePropagation();
+          engine()?.getInputHandler?.()?.textarea?.focus?.();
           return;
         }
         const closeBtn = topDialog.querySelector('.dialog-close, button.close, [class*="close"], button.dialog-btn:last-child');
@@ -741,6 +944,20 @@
           return;
         }
       }
+    }
+
+    // 대화상자 내부 입력창, 툴바 인풋(#font-size 등), 검색창에 포커스가 있을 때는 에디터/표 단축키가 키 입력을 가로채지 않도록 격리
+    const currentIh = engine()?.getInputHandler?.();
+    const target = event.target;
+    const isUiInput = !!(target && target !== currentIh?.textarea && (
+      target.tagName === 'INPUT' ||
+      target.tagName === 'SELECT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.isContentEditable ||
+      target.closest?.('.modal-overlay, .hanul-modal-overlay, .dialog-panel, .find-dialog, .find-box, .find-widget')
+    ));
+    if (isUiInput) {
+      return;
     }
 
     // [한컴 표준] F11 개체 선택 모드 토글 (글 뒤로 배치된 서명/도장/그림 선택)
@@ -758,11 +975,21 @@
       setTimeout(() => { waitingForKPrefix = false; }, 1500);
       return;
     }
-    if (waitingForKPrefix && !event.altKey && (event.code === 'KeyH' || event.key.toLowerCase() === 'h' || event.key === 'ㅗ')) {
+    if (waitingForKPrefix) {
+      if (event.key === 'Control' || event.key === 'Meta' || event.key === 'Shift' || event.key === 'Alt') {
+        return;
+      }
       waitingForKPrefix = false;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      showHyperlinkModal();
+      if (!event.altKey && (event.code === 'KeyH' || event.key.toLowerCase() === 'h' || event.key === 'ㅗ')) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        showHyperlinkModal();
+        return;
+      }
+    }
+
+    // 한글 조합 중(IME Composing)에는 조합 문자를 깨뜨리지 않도록 단일 키 단축키 개입 차단
+    if (!command && !event.altKey && (event.isComposing || composing || event.keyCode === 229)) {
       return;
     }
 
@@ -786,7 +1013,6 @@
 
     // [한컴 필수] 표 내부 방향키 크기 조절 (웹뷰 내부 직접 캡처 - macOS Mission Control 및 VS Code 단어 이동 가로채기 방지)
     const isArrowKey = event.key === 'ArrowRight' || event.key === 'ArrowLeft' || event.key === 'ArrowUp' || event.key === 'ArrowDown';
-    const currentIh = engine()?.getInputHandler?.();
     const inTableContext = currentIh && (currentIh.cursor?.isInCell?.() || currentIh.cursor?.isInCellSelectionMode?.() || currentIh.cursor?.isInTableObjectSelection?.());
     if (inTableContext && isArrowKey) {
       if ((event.ctrlKey || event.metaKey) && !event.shiftKey && !event.altKey) {
@@ -805,23 +1031,27 @@
         // Alt + 방향키: 해당 셀 크기 조절
         event.preventDefault();
         event.stopImmediatePropagation();
-        if (currentIh.cursor?.isInCellSelectionMode?.()) {
-          currentIh.resizeCellByKeyboard?.(event.key);
-        } else {
+        if (!currentIh.cursor?.isInCellSelectionMode?.()) {
           currentIh.cursor?.enterCellSelectionMode?.();
-          currentIh.resizeCellByKeyboard?.(event.key);
+          currentIh.caret?.hide?.();
+          currentIh.selectionRenderer?.clear?.();
         }
+        currentIh.resizeCellLocalByKeyboard?.(event.key) ?? currentIh.resizeCellByKeyboard?.(event.key);
+        currentIh.updateCellSelection?.();
+        updateTableHudState();
         return;
       } else if (event.altKey && event.shiftKey) {
         // Shift + Alt + 방향키: 셀 외곽 경계선만 조절
         event.preventDefault();
         event.stopImmediatePropagation();
-        if (currentIh.cursor?.isInCellSelectionMode?.()) {
-          currentIh.resizeCellBoundaryByKeyboard?.(event.key);
-        } else {
+        if (!currentIh.cursor?.isInCellSelectionMode?.()) {
           currentIh.cursor?.enterCellSelectionMode?.();
-          currentIh.resizeCellBoundaryByKeyboard?.(event.key);
+          currentIh.caret?.hide?.();
+          currentIh.selectionRenderer?.clear?.();
         }
+        currentIh.resizeCellBoundaryByKeyboard?.(event.key);
+        currentIh.updateCellSelection?.();
+        updateTableHudState();
         return;
       }
     }
@@ -837,7 +1067,11 @@
       if (!loaded) return;
       if (composing || event.isComposing) { notice('한글 입력을 완료한 뒤 저장해 주세요.'); return; }
       state('저장 중…'); post({ type: event.shiftKey ? 'saveAs' : 'save' });
-    } else if (command && !event.altKey && (event.code === 'KeyF' || event.key.toLowerCase() === 'f' || event.key === 'ㄹ')) {
+    } else if (command && event.altKey && !event.shiftKey && (event.code === 'KeyF' || event.key.toLowerCase() === 'f' || event.key === 'ㄹ')) {
+      event.preventDefault(); event.stopImmediatePropagation();
+      if (!loaded) return;
+      try { engine().command('edit:find-replace'); } catch (err) { console.warn('찾아바꾸기 명령 실행 실패:', err); }
+    } else if (command && !event.altKey && !event.shiftKey && (event.code === 'KeyF' || event.key.toLowerCase() === 'f' || event.key === 'ㄹ')) {
       event.preventDefault(); event.stopImmediatePropagation();
       if (!loaded) return;
       try {
@@ -845,7 +1079,7 @@
       } catch (err) {
         console.warn('찾기 명령 실행 실패:', err);
       }
-    } else if (command && !event.altKey && (event.code === 'KeyH' || event.key.toLowerCase() === 'h' || event.key === 'ㅗ')) {
+    } else if (command && !event.altKey && !event.shiftKey && (event.code === 'KeyH' || event.key.toLowerCase() === 'h' || event.key === 'ㅗ')) {
       event.preventDefault(); event.stopImmediatePropagation();
       if (!loaded) return;
       try {
@@ -892,31 +1126,31 @@
       event.preventDefault(); event.stopPropagation();
       if (!loaded) return;
       try { engine().command('format:style-dialog'); } catch (err) { console.warn('스타일 대화상자 실패:', err); }
-    } else if (event.altKey && !event.ctrlKey && !event.metaKey && (event.code === 'KeyL' || event.key.toLowerCase() === 'l' || event.key === 'ㅣ')) {
+    } else if (event.altKey && !event.shiftKey && !event.ctrlKey && !event.metaKey && (event.code === 'KeyL' || event.key.toLowerCase() === 'l' || event.key === 'ㅣ')) {
       event.preventDefault(); event.stopPropagation();
       if (!loaded) return;
       try { engine().command('format:char-shape'); } catch (err) { console.warn('글자 모양 실패:', err); }
-    } else if (event.altKey && !event.ctrlKey && !event.metaKey && (event.code === 'KeyT' || event.key.toLowerCase() === 't' || event.key === 'ㅅ')) {
+    } else if (event.altKey && !event.shiftKey && !event.ctrlKey && !event.metaKey && (event.code === 'KeyT' || event.key.toLowerCase() === 't' || event.key === 'ㅅ')) {
       event.preventDefault(); event.stopPropagation();
       if (!loaded) return;
       try { engine().command('format:para-shape'); } catch (err) { console.warn('문단 모양 실패:', err); }
-    } else if (event.altKey && event.shiftKey && (event.code === 'KeyE' || event.key.toLowerCase() === 'e' || event.key === 'ㄷ')) {
+    } else if (event.altKey && event.shiftKey && !event.ctrlKey && !event.metaKey && (event.code === 'KeyE' || event.key.toLowerCase() === 'e' || event.key === 'ㄷ')) {
       event.preventDefault(); event.stopPropagation();
       if (!loaded) return;
       try { engine().command('format:font-size-increase'); } catch (err) { console.warn('글자 크기 증가 실패:', err); }
-    } else if (event.altKey && event.shiftKey && (event.code === 'KeyR' || event.key.toLowerCase() === 'r' || event.key === 'ㄱ')) {
+    } else if (event.altKey && event.shiftKey && !event.ctrlKey && !event.metaKey && (event.code === 'KeyR' || event.key.toLowerCase() === 'r' || event.key === 'ㄱ')) {
       event.preventDefault(); event.stopPropagation();
       if (!loaded) return;
       try { engine().command('format:font-size-decrease'); } catch (err) { console.warn('글자 크기 감소 실패:', err); }
-    } else if (event.altKey && event.shiftKey && (event.code === 'KeyC' || event.key.toLowerCase() === 'c' || event.key === 'ㅊ')) {
+    } else if (event.altKey && event.shiftKey && !event.ctrlKey && !event.metaKey && (event.code === 'KeyC' || event.key.toLowerCase() === 'c' || event.key === 'ㅊ')) {
       event.preventDefault(); event.stopPropagation();
       if (!loaded) return;
       try { engine().command('format:align-center'); } catch (err) { console.warn('가운데 정렬 실패:', err); }
-    } else if (event.altKey && event.shiftKey && (event.code === 'KeyL' || event.key.toLowerCase() === 'l' || event.key === 'ㅣ')) {
+    } else if (event.altKey && event.shiftKey && !event.ctrlKey && !event.metaKey && (event.code === 'KeyL' || event.key.toLowerCase() === 'l' || event.key === 'ㅣ')) {
       event.preventDefault(); event.stopPropagation();
       if (!loaded) return;
       try { engine().command('format:align-left'); } catch (err) { console.warn('왼쪽 정렬 실패:', err); }
-    } else if (event.altKey && event.shiftKey && (event.code === 'KeyT' || event.key.toLowerCase() === 't' || event.key === 'ㅅ')) {
+    } else if (event.altKey && event.shiftKey && !event.ctrlKey && !event.metaKey && (event.code === 'KeyT' || event.key.toLowerCase() === 't' || event.key === 'ㅅ')) {
       event.preventDefault(); event.stopPropagation();
       if (!loaded) return;
       try { engine().command('format:align-justify'); } catch (err) { console.warn('양쪽 정렬 실패:', err); }
@@ -930,102 +1164,88 @@
         event.preventDefault(); event.stopPropagation();
         try { engine().command('table:delete-row-col'); } catch (err) { console.warn('줄/칸 삭제 실패:', err); }
       }
-    } else if (command && (event.key === 'Enter' || event.code === 'Enter') && !event.shiftKey) {
+    } else if (command && (event.key === 'Enter' || event.code === 'Enter') && !event.shiftKey && !event.altKey) {
       event.preventDefault(); event.stopPropagation();
       if (!loaded) return;
-      try {
-        const ih = engine()?.getInputHandler?.();
-        const pos = ih?.getPosition?.();
-        if (pos) {
-          ih.executeOperation({
-            kind: 'snapshot',
-            operationType: 'pageBreak',
-            operation: e => {
-              const res = JSON.parse(e.insertPageBreak(pos.sectionIndex, pos.paragraphIndex, pos.charOffset));
-              return res.ok ? { sectionIndex: pos.sectionIndex, paragraphIndex: res.paraIdx ?? pos.paragraphIndex, charOffset: res.charOffset ?? 0 } : pos;
-            }
-          });
-        }
-      } catch (err) { console.warn('쪽 나누기 실패:', err); }
+      try { engine().command('page:break'); } catch (err) { console.warn('쪽 나누기 실패:', err); }
     } else if (command && (event.key === 'F10' || event.code === 'F10')) {
       event.preventDefault(); event.stopPropagation();
       if (!loaded) return;
       try { engine().command('insert:symbols'); } catch (err) { console.warn('문자표 실패:', err); }
-    } else if ((command && event.altKey && (event.code === 'KeyM' || event.key.toLowerCase() === 'm' || event.key === 'ㅡ')) || (event.altKey && (event.code === 'KeyE' || event.key.toLowerCase() === 'e' || event.key === 'ㄷ'))) {
+    } else if ((command && event.altKey && !event.shiftKey && (event.code === 'KeyM' || event.key.toLowerCase() === 'm' || event.key === 'ㅡ')) || (event.altKey && !event.shiftKey && !event.ctrlKey && !event.metaKey && (event.code === 'KeyE' || event.key.toLowerCase() === 'e' || event.key === 'ㄷ'))) {
       event.preventDefault(); event.stopPropagation();
       if (!loaded) return;
       try { engine().command('insert:equation'); } catch (err) { console.warn('수식 편집기 실패:', err); }
-    } else if (command && event.shiftKey && (event.code === 'KeyS' || event.key.toLowerCase() === 's' || event.key === 'ㄴ')) {
+    } else if (command && event.shiftKey && !event.altKey && (event.code === 'KeyS' || event.key.toLowerCase() === 's' || event.key === 'ㄴ')) {
       const ih = engine()?.getInputHandler?.();
-      if (ih?.cursor?.isInCellSelectionMode?.() || ih?.cursor?.isInCell?.()) {
+      if (ih?.cursor?.isInCellSelectionMode?.()) {
         event.preventDefault(); event.stopPropagation();
         try { engine().command('table:block-sum'); } catch (err) { console.warn('블록 합계 실패:', err); }
       }
-    } else if (command && event.shiftKey && (event.code === 'KeyA' || event.key.toLowerCase() === 'a' || event.key === 'ㅁ')) {
+    } else if (command && event.shiftKey && !event.altKey && (event.code === 'KeyA' || event.key.toLowerCase() === 'a' || event.key === 'ㅁ')) {
       const ih = engine()?.getInputHandler?.();
       if (ih?.cursor?.isInCellSelectionMode?.() || ih?.cursor?.isInCell?.()) {
         event.preventDefault(); event.stopPropagation();
         try { engine().command('table:block-avg'); } catch (err) { console.warn('블록 평균 실패:', err); }
       }
-    } else if (command && event.shiftKey && (event.code === 'KeyP' || event.key.toLowerCase() === 'p' || event.key === 'ㅔ')) {
+    } else if (command && event.shiftKey && !event.altKey && (event.code === 'KeyP' || event.key.toLowerCase() === 'p' || event.key === 'ㅔ')) {
       const ih = engine()?.getInputHandler?.();
       if (ih?.cursor?.isInCellSelectionMode?.() || ih?.cursor?.isInCell?.()) {
         event.preventDefault(); event.stopPropagation();
         try { engine().command('table:block-product'); } catch (err) { console.warn('블록 곱 실패:', err); }
       }
     } else if (!event.ctrlKey && !event.metaKey && !event.altKey && (event.code === 'KeyA' || event.key.toLowerCase() === 'a' || event.key === 'ㅁ')) {
+      // [중요] 단일 문자 표 단축키(A, W, H, M, S)는 오직 수동 F5 셀 선택 모드에서만 작동! (일반 텍스트 타이핑 및 보호된 셀 모드 침범 금지)
       const ih = engine()?.getInputHandler?.();
-      if (ih?.cursor?.isInCellSelectionMode?.()) {
+      if (ih?.cursor?.isInCellSelectionMode?.() && !ih?.cursor?.isProtectedCellSelectionMode?.()) {
         event.preventDefault(); event.stopImmediatePropagation();
         performTableAutoFill();
         updateTableHudState();
-      } else if (ih?.cursor?.isInCell?.()) {
-        event.preventDefault(); event.stopImmediatePropagation();
-        notice('⚡ 자동 채우기(A): 먼저 F5를 두 번 눌러 빨간 점(🔴)으로 채울 셀들을 범위 선택해 주세요.');
       }
     } else if (!event.ctrlKey && !event.metaKey && !event.altKey && (event.code === 'KeyW' || event.key.toLowerCase() === 'w' || event.key === 'ㅈ')) {
       const ih = engine()?.getInputHandler?.();
-      if (ih?.cursor?.isInCellSelectionMode?.() || ih?.cursor?.isInCell?.()) {
+      if (ih?.cursor?.isInCellSelectionMode?.() && !ih?.cursor?.isProtectedCellSelectionMode?.()) {
         event.preventDefault(); event.stopImmediatePropagation();
         try { engine().command('table:cell-width-equal'); notice('열 너비 균등화 완료 (W)'); } catch (err) { console.warn(err); }
         updateTableHudState();
       }
     } else if (!event.ctrlKey && !event.metaKey && !event.altKey && (event.code === 'KeyH' || event.key.toLowerCase() === 'h' || event.key === 'ㅗ')) {
       const ih = engine()?.getInputHandler?.();
-      if (ih?.cursor?.isInCellSelectionMode?.() || ih?.cursor?.isInCell?.()) {
+      if (ih?.cursor?.isInCellSelectionMode?.() && !ih?.cursor?.isProtectedCellSelectionMode?.()) {
         event.preventDefault(); event.stopImmediatePropagation();
         try { engine().command('table:cell-height-equal'); notice('행 높이 균등화 완료 (H)'); } catch (err) { console.warn(err); }
         updateTableHudState();
       }
     } else if (!event.ctrlKey && !event.metaKey && !event.altKey && (event.code === 'KeyM' || event.key.toLowerCase() === 'm' || event.key === 'ㅡ')) {
       const ih = engine()?.getInputHandler?.();
-      if (ih?.cursor?.isInCellSelectionMode?.()) {
+      if (ih?.cursor?.isInCellSelectionMode?.() && !ih?.cursor?.isProtectedCellSelectionMode?.()) {
         event.preventDefault(); event.stopImmediatePropagation();
         try { engine().command('table:cell-merge'); notice('선택된 셀 합치기 완료 (M)'); } catch (err) { console.warn(err); }
         updateTableHudState();
-      } else if (ih?.cursor?.isInCell?.()) {
-        event.preventDefault(); event.stopImmediatePropagation();
-        notice('⚠️ 셀 합치기(M): 먼저 F5를 두 번 눌러 빨간 점(🔴)으로 합칠 셀들을 2개 이상 선택해 주세요.');
       }
     } else if (!event.ctrlKey && !event.metaKey && !event.altKey && (event.code === 'KeyS' || event.key.toLowerCase() === 's' || event.key === 'ㄴ')) {
       const ih = engine()?.getInputHandler?.();
-      if (ih?.cursor?.isInCellSelectionMode?.() || ih?.cursor?.isInCell?.()) {
+      if (ih?.cursor?.isInCellSelectionMode?.() && !ih?.cursor?.isProtectedCellSelectionMode?.()) {
         event.preventDefault(); event.stopImmediatePropagation();
         try { engine().command('table:cell-split'); notice('셀 나누기 (S)'); } catch (err) { console.warn(err); }
         updateTableHudState();
       }
     } else if (!event.ctrlKey && !event.metaKey && !event.altKey && (event.code === 'KeyP' || event.key.toLowerCase() === 'p' || event.key === 'ㅔ')) {
       const ih = engine()?.getInputHandler?.();
-      if (ih?.cursor?.isInCellSelectionMode?.() || ih?.cursor?.isInCell?.()) {
+      if (ih?.cursor?.isInCellSelectionMode?.() || ih?.cursor?.isInTableObjectSelection?.()) {
         event.preventDefault(); event.stopImmediatePropagation();
         try { engine().command('table:cell-props'); } catch (err) {
           try { engine().command('format:object-properties'); } catch (e) { console.warn(e); }
         }
         updateTableHudState();
+      } else if (ih?.isInPictureObjectSelection?.()) {
+        event.preventDefault(); event.stopImmediatePropagation();
+        try { engine().command('insert:picture-props'); } catch (err) { console.warn(err); }
+        updateImageHudState();
       }
     } else if (event.key === 'Delete' || event.key === 'Backspace') {
       const ih = engine()?.getInputHandler?.();
-      if (ih?.cursor?.isInCellSelectionMode?.()) {
+      if (ih?.cursor?.isInCellSelectionMode?.() && !ih?.cursor?.isProtectedCellSelectionMode?.()) {
         event.preventDefault(); event.stopImmediatePropagation();
         try { engine().command('table:cell-clear-content'); notice('선택된 셀 내용 지움'); } catch (e) {}
         updateTableHudState();
@@ -1339,8 +1559,18 @@
           result = { bytes: await engine().export(params.format), version };
           break;
         case 'saved':
-          if (version === params.version) { await engine().saved(params.name); state(version === params.version ? '저장 완료' : '변경됨 · 저장 필요'); if (version === params.version) notice(''); }
-          else state('변경됨 · 저장 필요');
+          if (version === params.version) {
+            await engine().saved(params.name);
+            state('저장 완료');
+            const lossCount = window.__lastContentLoss?.losses?.length || 0;
+            window.__lastContentLoss = null;
+            notice(lossCount > 0 ? `⚠️ 저장 완료 (원본 백업 보관됨 · 일부 확장 속성 ${lossCount}건 생략)` : '');
+          } else {
+            state('변경됨 · 저장 필요');
+          }
+          result = { version }; break;
+        case 'saveCancelled':
+          state(version > 0 ? '변경됨 · 저장 필요' : '편집 준비 완료');
           result = { version }; break;
         case 'saveFailed': state('저장 실패 · 변경 유지'); notice(params.error); result = {}; break;
         case 'testInput':
@@ -1403,6 +1633,8 @@
                 try { engine().command('table:cell-width-equal'); } catch (e) { console.warn(e); }
               } else if (params.action === 'equalHeight') {
                 try { engine().command('table:cell-height-equal'); } catch (e) { console.warn(e); }
+              } else if (params.action === 'toggleProtect') {
+                toggleActiveCellProtection();
               } else if (params.action === 'selectCell') {
                 if (ih.cursor?.isInCell() && !ih.cursor?.isInTextBox()) {
                   if (ih.cursor.isInCellSelectionMode()) {
@@ -1420,6 +1652,9 @@
                 } else if (ih.cursor?.isInCell()) {
                   ih.cursor.enterCellSelectionMode();
                   ih.resizeCellByKeyboard(params.key);
+                } else {
+                  const isMac = /Mac|iPhone|iPad/i.test(navigator.platform || '');
+                  dispatchKey({ key: params.key, code: params.key, metaKey: isMac, ctrlKey: !isMac });
                 }
               } else if (params.action === 'resizeLocal') {
                 if (ih.cursor?.isInCellSelectionMode()) {
@@ -1427,21 +1662,26 @@
                 } else if (ih.cursor?.isInCell()) {
                   ih.cursor.enterCellSelectionMode();
                   ih.resizeCellLocalByKeyboard(params.key);
+                } else {
+                  dispatchKey({ key: params.key, code: params.key, altKey: true });
                 }
               } else if (params.action === 'resizeBoundary') {
                 if (ih.cursor?.isInCellSelectionMode()) {
                   ih.resizeCellBoundaryByKeyboard(params.key);
+                } else {
+                  dispatchKey({ key: params.key, code: params.key, shiftKey: true, altKey: true });
                 }
               }
-            }
-            if (params.action === 'selectCell') {
-              dispatchKey({ key: 'F5', code: 'F5' });
-            } else if (params.action === 'resize') {
-              dispatchKey({ key: params.key, code: params.key, ctrlKey: true, metaKey: true });
-            } else if (params.action === 'resizeLocal') {
-              dispatchKey({ key: params.key, code: params.key, altKey: true });
-            } else if (params.action === 'resizeBoundary') {
-              dispatchKey({ key: params.key, code: params.key, shiftKey: true, altKey: true });
+            } else {
+              if (params.action === 'selectCell') {
+                dispatchKey({ key: 'F5', code: 'F5' });
+              } else if (params.action === 'resize') {
+                dispatchKey({ key: params.key, code: params.key, ctrlKey: true, metaKey: true });
+              } else if (params.action === 'resizeLocal') {
+                dispatchKey({ key: params.key, code: params.key, altKey: true });
+              } else if (params.action === 'resizeBoundary') {
+                dispatchKey({ key: params.key, code: params.key, shiftKey: true, altKey: true });
+              }
             }
           }
           updateTableHudState();
@@ -1609,6 +1849,7 @@
           <button id="hanul-btn-block-sum" type="button" class="hud-btn" title="선택된 셀 블록 합계 (단축키: Ctrl+Shift+S)">∑ 합계</button>
           <button id="hanul-btn-block-avg" type="button" class="hud-btn" title="선택된 셀 블록 평균 (단축키: Ctrl+Shift+A)">Avg</button>
           <button id="hanul-btn-formula" type="button" class="hud-btn" title="표 계산식 대화상자 (단축키: Ctrl+N,F)">fx 계산...</button>
+          <button id="hanul-btn-cell-protect" type="button" class="hud-btn" title="현재 셀의 보호 잠금 켜기/끄기">🔒 셀보호</button>
           <button id="hanul-btn-props" type="button" class="hud-btn" title="표/셀 속성 대화상자 (단축키: P)">속성(P)...</button>
         </div>
         <button id="hanul-hud-close" type="button" class="hud-close-btn" title="표 도구 캡슐 닫기">✕</button>
@@ -1682,6 +1923,9 @@
       });
       document.getElementById('hanul-btn-formula')?.addEventListener('click', () => {
         try { engine().command('table:formula'); } catch (e) { console.warn(e); }
+      });
+      document.getElementById('hanul-btn-cell-protect')?.addEventListener('click', () => {
+        toggleActiveCellProtection();
       });
       document.getElementById('hanul-btn-props')?.addEventListener('click', () => {
         try { engine().command('table:cell-props'); } catch (e) { console.warn(e); }

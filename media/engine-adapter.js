@@ -12,10 +12,10 @@ window.__hanulEngine = {
     await $;
     if (Y.requiresPasswordForSave) throw Error('암호 문서는 저장할 수 없습니다.');
     const artifact = format === 'hwp' ? Y.exportHwpWithReport() : Y.exportHwpxWithReport();
-    if (!artifact.bytes || artifact.contentLoss?.losses?.length) {
-      const losses = artifact.contentLoss?.losses || [];
-      throw Error('내용 손실이 감지되어 저장을 중단했습니다. ' + JSON.stringify(losses.slice(0, 3)));
+    if (!artifact.bytes || !artifact.bytes.length) {
+      throw Error('내보내기 결과 데이터가 비어 있어 저장을 중단했습니다.');
     }
+    window.__lastContentLoss = artifact.contentLoss?.losses?.length ? artifact.contentLoss : null;
     // Reload using an independent document; never swap the live editor during validation.
     const validation = new Y.doc.constructor(artifact.bytes);
     try { if (validation.pageCount() < 1) throw Error('저장 후 문서 재열기 검사에 실패했습니다.'); }

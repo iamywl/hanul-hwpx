@@ -163,7 +163,7 @@ flowchart TD
 | 4.12 | **현재 셀 및 행열 조절** | Alt + 방향키 | 🟢 완료 | [`media/host.js`](../media/host.js#L1019) `resizeCellLocalByKeyboard` | 키보드 반응 Pass |
 | 4.13 | **외곽 경계선만 조절** | Shift + Alt + 방향키 | 🟢 완료 | [`media/host.js`](../media/host.js#L1026) `resizeCellBoundaryByKeyboard` | 키보드 반응 Pass |
 | 4.14 | **표 외곽 핸들 마우스 드래그**| 8방향 핸들 드래그 크기 조절 | 🟢 완료 | [`media/host.js`](../media/host.js#L973) `toggleTableHandles`, RAF 적용 | 렉 없는 조절 Pass |
-| 4.15 | **셀 경계선 마우스 드래그**| 열/행 분할선 마우스 드래그 | 🟢 완료 | 10pt 허용치 마우스 이벤트 추적 | 드래그 인터랙션 Pass |
+| 4.15 | **셀 경계선 마우스 드래그**| 열/행 분할선 마우스 드래그 | 🟢 완료 | 3pt(셀 22% 상한) 정밀 허용치 및 텍스트 클릭 충돌 방지 | `test:table` & `test:hwp-edit` Pass |
 | 4.16 | **아래에 줄 추가 (Alt+Enter)**| 현재 행 아래에 새 행 삽입 | 🟢 완료 | [`media/host.js`](../media/host.js#L977) `insertRow` | 단축키 & HUD Pass |
 | 4.17 | **줄 지우기 (Alt+Delete)**| 현재 선택된 행 삭제 | 🟢 완료 | [`media/host.js`](../media/host.js#L979) `deleteRow` | 단축키 & HUD Pass |
 | 4.18 | **오른쪽에 칸 추가** | 현재 열 오른쪽에 새 열 삽입 | 🟢 완료 | [`media/host.js`](../media/host.js#L981) `insertCol` | HUD 버튼 Pass |

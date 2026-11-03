@@ -24,16 +24,16 @@ export async function patchStudio() {
     code = code.replace(iuTarget, iuReplacement);
   }
 
-  // [Hanul Permanent Core Patch 2] hitTestBorder tolerance 4pt -> 10pt 확대 (마우스 경계선 잡기 극대화)
-  const hitTarget = "hitTestBorder(e,t,n,r=4){if(n.length===0)return null";
-  const hitReplacement = "hitTestBorder(e,t,n,r=10){if(n.length===0)return null";
+  // [Hanul Permanent Core Patch 2] hitTestBorder 정밀 허용치(r=3pt 및 셀 높이/너비 22% 상한) 적용 — 좁은 HWP 표 행(14~20pt) 내부 텍스트 클릭이 경계선 드래그로 오인되는 버그 원천 차단
+  const hitTarget = "hitTestBorder(e,t,n,r=4){if(n.length===0)return null;let{rowIndexByY:i,colIndexByX:a}=this.computeBorderLines(n),o=n[0].pageIndex,s=e=>Math.round(e*10)/10,c=[];for(let a of n){if(e<a.x-r||e>a.x+a.w+r)continue;let n=i.get(s(a.y));n!==void 0&&Math.abs(t-a.y)<=r&&c.push({edge:{type:`row`,index:n,pageIndex:o},distance:Math.abs(t-a.y),priority:1});let l=a.y+a.h,u=i.get(s(l));u!==void 0&&Math.abs(t-l)<=r&&c.push({edge:{type:`row`,index:u,pageIndex:o},distance:Math.abs(t-l),priority:1})}for(let i of n){if(t<i.y-r||t>i.y+i.h+r)continue;let n=a.get(s(i.x));n!==void 0&&Math.abs(e-i.x)<=r&&c.push({edge:{type:`col`,index:n,pageIndex:o},distance:Math.abs(e-i.x),priority:0});let l=i.x+i.w,u=a.get(s(l));u!==void 0&&Math.abs(e-l)<=r&&c.push({edge:{type:`col`,index:u,pageIndex:o},distance:Math.abs(e-l),priority:0})}";
+  const hitReplacement = "hitTestBorder(e,t,n,r=3){if(n.length===0)return null;let{rowIndexByY:i,colIndexByX:a}=this.computeBorderLines(n),o=n[0].pageIndex,s=e=>Math.round(e*10)/10,c=[];for(let a of n){let d=Math.min(r,Math.max(1.5,(a.h||12)*.22));if(e<a.x-d||e>a.x+a.w+d)continue;let n=i.get(s(a.y));n!==void 0&&Math.abs(t-a.y)<=d&&c.push({edge:{type:`row`,index:n,pageIndex:o},distance:Math.abs(t-a.y),priority:1});let l=a.y+a.h,u=i.get(s(l));u!==void 0&&Math.abs(t-l)<=d&&c.push({edge:{type:`row`,index:u,pageIndex:o},distance:Math.abs(t-l),priority:1})}for(let i of n){let d=Math.min(r,Math.max(1.5,(i.w||12)*.22));if(t<i.y-d||t>i.y+i.h+d)continue;let n=a.get(s(i.x));n!==void 0&&Math.abs(e-i.x)<=d&&c.push({edge:{type:`col`,index:n,pageIndex:o},distance:Math.abs(e-i.x),priority:0});let l=i.x+i.w,u=a.get(s(l));u!==void 0&&Math.abs(e-l)<=d&&c.push({edge:{type:`col`,index:u,pageIndex:o},distance:Math.abs(e-l),priority:0})}";
   if (code.includes(hitTarget)) {
     code = code.replace(hitTarget, hitReplacement);
   }
 
-  // [Hanul Permanent Core Patch 3] 표 셀 내부에서 Ctrl/Alt/Shift + 방향키 누를 시 자동 셀 선택 모드 진입
+  // [Hanul Permanent Core Patch 3] 표 셀 내부에서 Ctrl/Alt + 방향키 누를 시 자동 셀 선택 모드 진입 (Shift 단독 방향키는 텍스트 블록 선택 보존)
   const keydownTarget = "if(this.cursor.isInBlockSelectionMode()&&e.key===`Escape`){e.preventDefault(),this.cursor.exitBlockSelectionMode(),this.selectionRenderer.clear(),this.updateCaret();return}if(this.cursor.isInCellSelectionMode()){";
-  const keydownReplacement = "if(this.cursor.isInBlockSelectionMode()&&e.key===`Escape`){e.preventDefault(),this.cursor.exitBlockSelectionMode(),this.selectionRenderer.clear(),this.updateCaret();return}if(!this.cursor.isInCellSelectionMode()&&this.cursor.isInCell()&&!this.cursor.isInTextBox()&&(e.ctrlKey||e.metaKey||e.altKey||e.shiftKey)&&(e.key===`ArrowUp`||e.key===`ArrowDown`||e.key===`ArrowLeft`||e.key===`ArrowRight`)){this.cursor.enterCellSelectionMode()&&(this.caret.hide(),this.selectionRenderer.clear(),this.updateCellSelection())}if(this.cursor.isInCellSelectionMode()){";
+  const keydownReplacement = "if(this.cursor.isInBlockSelectionMode()&&e.key===`Escape`){e.preventDefault(),this.cursor.exitBlockSelectionMode(),this.selectionRenderer.clear(),this.updateCaret();return}if(!this.cursor.isInCellSelectionMode()&&this.cursor.isInCell()&&!this.cursor.isInTextBox()&&(e.ctrlKey||e.metaKey||e.altKey)&&(e.key===`ArrowUp`||e.key===`ArrowDown`||e.key===`ArrowLeft`||e.key===`ArrowRight`)){this.cursor.enterCellSelectionMode()&&(this.caret.hide(),this.selectionRenderer.clear(),this.updateCellSelection())}if(this.cursor.isInCellSelectionMode()){";
   if (code.includes(keydownTarget)) {
     code = code.replace(keydownTarget, keydownReplacement);
   }
@@ -64,6 +64,20 @@ export async function patchStudio() {
   const charShapeReplacement = "let n=t.getCharProperties(),r=t.getSelection();if(!r){let p=t.getCursorPosition?.()??{sectionIndex:0,paragraphIndex:0,charOffset:0};r={start:p,end:p}}let i=new CS(e.wasm,e.eventBus);";
   if (code.includes(charShapeTarget)) {
     code = code.replace(charShapeTarget, charShapeReplacement);
+  }
+
+  // [Hanul Permanent Core Patch 8] 보호된 셀(cellProtect) 선택 트랩 방지: Cmd/Ctrl 단축키, Tab 다음 셀 이동, 비보호 셀 자동 전환 및 안내 콜백 지원
+  const protTarget = "if(this.cursor.isProtectedCellSelectionMode()){e.preventDefault(),this.textarea.focus();return}";
+  const protReplacement = "if(this.cursor.isProtectedCellSelectionMode()){if(e.ctrlKey||e.metaKey){e.key!==`Control`&&e.key!==`Meta`&&this.handleCtrlKey(e);return}if(e.key===`Tab`){e.preventDefault(),this.cursor.exitCellSelectionMode(),this.cellSelectionRenderer?.clear(),e.shiftKey?this.cursor.moveToCellPrev():this.cursor.moveToCellNext();let t=this.cursor.getPosition();ou(this,t)?uu.call(this,t):this.updateCaret(),this.textarea.focus();return}if(ou(this,this.cursor.getPosition())){e.key!==`Shift`&&e.key!==`Control`&&e.key!==`Alt`&&e.key!==`Meta`&&window.__hanulOnProtectedCellInput?.(),e.preventDefault(),this.textarea.focus();return}}";
+  if (code.includes(protTarget)) {
+    code = code.replace(protTarget, protReplacement);
+  }
+
+  // [Hanul Permanent Core Patch 9] 초기 문서 로드 시 캐럿 배치 예외 안전 방어 (특수 HWP 양식 로드 중단 방지)
+  const caretInitTarget = "catch(e){console.warn(`[InputHandler] 캐럿 자동 배치 실패:`,e),this.cursor.moveTo({sectionIndex:0,paragraphIndex:0,charOffset:0}),this.active=!0,tm(this.cursor.getRect(),this.viewportManager.getZoom(),this.caret,this.eventBus),this.focusTextarea()}";
+  const caretInitReplacement = "catch(e){console.warn(`[InputHandler] 캐럿 자동 배치 실패:`,e);try{this.cursor.moveTo({sectionIndex:0,paragraphIndex:0,charOffset:0});let e=this.cursor.getRect();e&&tm(e,this.viewportManager.getZoom(),this.caret,this.eventBus)}catch{}this.active=!0,this.focusTextarea()}";
+  if (code.includes(caretInitTarget)) {
+    code = code.replace(caretInitTarget, caretInitReplacement);
   }
 
   const adapter = await readFile('media/engine-adapter.js', 'utf8');

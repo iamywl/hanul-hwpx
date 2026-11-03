@@ -2081,6 +2081,86 @@ body.hanul-object-selection-active .canvas-page-overlay {
 
 .hanul-glass-pill.active {
   background: rgba(37, 99, 235, 0.15) !important;
-  color: #2563eb !important;
-  border: 1px solid rgba(37, 99, 235, 0.3) !important;
+  color: #1d4ed8 !important;
+  border: 1px solid rgba(37, 99, 235, 0.35) !important;
+}
+
+:root[data-theme-effective="dark"] .hanul-glass-pill.active,
+body.vscode-dark .hanul-glass-pill.active,
+body.vscode-high-contrast .hanul-glass-pill.active {
+  background: rgba(37, 99, 235, 0.28) !important;
+  color: #93c5fd !important;
+  border: 1px solid rgba(96, 165, 250, 0.5) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme-effective="light"]) .hanul-glass-pill.active {
+    background: rgba(37, 99, 235, 0.28) !important;
+    color: #93c5fd !important;
+    border: 1px solid rgba(96, 165, 250, 0.5) !important;
+  }
+}
+
+/* 글머리표 및 문단 번호 선택 카드 (다크/라이트 완전 분리 WCAG AAA) */
+.bullet-opt {
+  padding: 12px 6px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 10px;
+  border: 1.5px solid rgba(15, 23, 42, 0.16);
+  background: #f8fafc;
+  color: #0f172a;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.bullet-opt:hover {
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.bullet-opt.active {
+  border: 2px solid #2563eb !important;
+  background: rgba(37, 99, 235, 0.14) !important;
+  color: #1d4ed8 !important;
+}
+
+:root[data-theme-effective="dark"] .bullet-opt,
+body.vscode-dark .bullet-opt,
+body.vscode-high-contrast .bullet-opt {
+  background: #262830;
+  border: 1.5px solid rgba(255, 255, 255, 0.18);
+  color: #f8fafc;
+}
+
+:root[data-theme-effective="dark"] .bullet-opt:hover,
+body.vscode-dark .bullet-opt:hover,
+body.vscode-high-contrast .bullet-opt:hover {
+  border-color: #60a5fa;
+  background: rgba(59, 130, 246, 0.2);
+}
+
+:root[data-theme-effective="dark"] .bullet-opt.active,
+body.vscode-dark .bullet-opt.active,
+body.vscode-high-contrast .bullet-opt.active {
+  border: 2px solid #60a5fa !important;
+  background: rgba(37, 99, 235, 0.32) !important;
+  color: #ffffff !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme-effective="light"]) .bullet-opt {
+    background: #262830;
+    border: 1.5px solid rgba(255, 255, 255, 0.18);
+    color: #f8fafc;
+  }
+  :root:not([data-theme-effective="light"]) .bullet-opt:hover {
+    border-color: #60a5fa;
+    background: rgba(59, 130, 246, 0.2);
+  }
+  :root:not([data-theme-effective="light"]) .bullet-opt.active {
+    border: 2px solid #60a5fa !important;
+    background: rgba(37, 99, 235, 0.32) !important;
+    color: #ffffff !important;
+  }
 }

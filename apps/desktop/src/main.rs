@@ -55,6 +55,16 @@ fn make_editor_html(root: &Path, origin: &str) -> String {
     let base_uri = format!("{}/studio/", origin);
     let media_uri = format!("{}/media/", origin);
 
+    // 불필요한 웹 전용 PWA / 아이콘 태그 제거 (콘솔 404 방지)
+    for needle in &[
+        "<link rel=\"icon\" href=\"/rhwp/favicon.ico\" />",
+        "<link rel=\"apple-touch-icon\" href=\"/rhwp/icons/icon-256.png\" />",
+        "<link rel=\"manifest\" href=\"/rhwp/manifest.webmanifest\">",
+        "<script id=\"vite-plugin-pwa:register-sw\" src=\"/rhwp/registerSW.js\"></script>",
+    ] {
+        source = source.replace(needle, "");
+    }
+
     // 진입점 교체
     if let Some(start) = source.find("src=\"/rhwp/assets/index") {
         if let Some(end) = source[start..].find(".js\"") {
@@ -77,13 +87,23 @@ fn make_editor_html(root: &Path, origin: &str) -> String {
         r#"<script>
 window.__hanulConfig = {{ base: "{}", media: "{}", development: false }};
 window.__desktopReady = false;
+window.__currentFileName = '새 문서.hwpx';
+window.__hasBackingFile = false;
+const __hanulFormatFromName = (n) => /\.hwp$/i.test(String(n || '')) ? 'hwp' : 'hwpx';
+const __hanulSyncDocMeta = (name, hasFile) => {{
+  window.__currentFileName = name || '새 문서.hwpx';
+  window.__hasBackingFile = !!hasFile;
+  document.title = window.__currentFileName + ' — 한울 (Hanul)';
+}};
 window.__hanulOpenFile = async function(fileName) {{
   try {{
     const r = await fetch('/api/file/raw');
     if (!r.ok) return;
     const buf = await r.arrayBuffer();
+    const targetName = fileName || '문서.hwpx';
+    __hanulSyncDocMeta(targetName, true);
     const send = (method, params = {{}}) => window.postMessage({{ type: 'request', id: crypto.randomUUID(), method, params }}, location.origin);
-    send('load', {{ bytes: new Uint8Array(buf), name: fileName || '문서.hwpx' }});
+    send('load', {{ bytes: new Uint8Array(buf), name: targetName }});
   }} catch (e) {{
     console.error('문서 로드 실패:', e);
   }}
@@ -93,6 +113,19 @@ window.__desktopApi = {{
     window.__previewMessages = window.__previewMessages || [];
     window.__previewMessages.push(m);
     const send = (method, params = {{}}) => window.postMessage({{ type: 'request', id: crypto.randomUUID(), method, params }}, location.origin);
+    const runSaveAs = () => {{
+      fetch('/api/file/dialog-save', {{ method: 'POST' }})
+        .then(r => r.json())
+        .then(res => {{
+          if (res.path) {{
+            window.__pendingSavePath = res.path;
+            send('export', {{ format: __hanulFormatFromName(res.path) }});
+          }} else {{
+            send('saveCancelled');
+          }}
+        }})
+        .catch(e => send('saveFailed', {{ error: String(e) }}));
+    }};
     if (m.type === 'ready') {{
       window.__desktopReady = true;
       fetch('/api/file/initial')
@@ -103,6 +136,7 @@ window.__desktopApi = {{
               const rawResp = await fetch('/api/file/raw');
               if (rawResp.ok) {{
                 const buffer = await rawResp.arrayBuffer();
+                __hanulSyncDocMeta(res.name, true);
                 send('load', {{ bytes: new Uint8Array(buffer), name: res.name }});
                 return;
               }}
@@ -113,26 +147,30 @@ window.__desktopApi = {{
               const binary = atob(res.bytes);
               const bytes = new Uint8Array(binary.length);
               for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+              __hanulSyncDocMeta(res.name, true);
               send('load', {{ bytes: bytes, name: res.name }});
               return;
             }}
           }}
+          __hanulSyncDocMeta('새 문서.hwpx', false);
           send('load', {{ bytes: [], name: '새 문서.hwpx' }});
         }})
-        .catch(() => send('load', {{ bytes: [], name: '새 문서.hwpx' }}));
+        .catch(() => {{
+          __hanulSyncDocMeta('새 문서.hwpx', false);
+          send('load', {{ bytes: [], name: '새 문서.hwpx' }});
+        }});
     }} else if (m.type === 'new') {{
+      fetch('/api/file/new', {{ method: 'POST' }}).catch(() => {{}});
+      __hanulSyncDocMeta('새 문서.hwpx', false);
       send('load', {{ bytes: [], name: '새 문서.hwpx' }});
     }} else if (m.type === 'save') {{
-      send('export', {{ format: 'hwpx' }});
+      if (!window.__hasBackingFile) {{
+        runSaveAs();
+      }} else {{
+        send('export', {{ format: __hanulFormatFromName(window.__currentFileName) }});
+      }}
     }} else if (m.type === 'saveAs') {{
-      fetch('/api/file/dialog-save', {{ method: 'POST' }})
-        .then(r => r.json())
-        .then(res => {{
-          if (res.path) {{
-            window.__pendingSavePath = res.path;
-            send('export', {{ format: 'hwpx' }});
-          }}
-        }});
+      runSaveAs();
     }} else if (m.type === 'open') {{
       fetch('/api/file/dialog-open', {{ method: 'POST' }})
         .then(r => r.json())
@@ -142,6 +180,7 @@ window.__desktopApi = {{
               const rawResp = await fetch('/api/file/raw');
               if (rawResp.ok) {{
                 const buffer = await rawResp.arrayBuffer();
+                __hanulSyncDocMeta(res.name, true);
                 send('load', {{ bytes: new Uint8Array(buffer), name: res.name }});
                 return;
               }}
@@ -150,6 +189,7 @@ window.__desktopApi = {{
               const binary = atob(res.bytes);
               const bytes = new Uint8Array(binary.length);
               for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+              __hanulSyncDocMeta(res.name, true);
               send('load', {{ bytes: bytes, name: res.name }});
             }}
           }}
@@ -164,9 +204,15 @@ window.__desktopApi = {{
         body: new Uint8Array(m.result.bytes)
       }}).then(r => r.json()).then(res => {{
         if (res.success) {{
-          send('saved', {{ name: res.name || '문서.hwpx', version: m.result.version }});
+          const savedName = res.name || window.__currentFileName || '문서.hwpx';
+          __hanulSyncDocMeta(savedName, true);
+          send('saved', {{ name: savedName, version: m.result.version }});
+        }} else if (res.needSaveAs) {{
+          runSaveAs();
+        }} else {{
+          send('saveFailed', {{ error: res.error || '파일 저장에 실패했습니다.' }});
         }}
-      }}).catch(e => console.error('저장 실패:', e));
+      }}).catch(e => send('saveFailed', {{ error: String(e) }}));
     }}
   }}
 }};
@@ -300,12 +346,42 @@ fn start_local_server(root: PathBuf, state: Arc<Mutex<AppState>>) -> (String, u1
                 continue;
             }
 
-            // 3. 다른 이름으로 저장 다이얼로그 API
+            // 2.5. 새 문서 상태 초기화 API
+            if path == "/api/file/new" && request.method() == &Method::Post {
+                {
+                    let mut st = state.lock().unwrap();
+                    st.current_file_path = None;
+                }
+                let resp = Response::from_string(r#"{"success":true}"#)
+                    .with_header(Header::from_bytes(&b"Content-Type"[..], &b"application/json"[..]).unwrap());
+                let _ = request.respond(resp);
+                continue;
+            }
+
+            // 3. 다른 이름으로 저장 다이얼로그 API (.hwp 및 .hwpx 양방향 지원)
             if path == "/api/file/dialog-save" && request.method() == &Method::Post {
-                let file_opt = rfd::FileDialog::new()
-                    .add_filter("한글 표준 문서 (HWPX)", &["hwpx"])
+                let default_name = {
+                    let st = state.lock().unwrap();
+                    st.current_file_path
+                        .as_ref()
+                        .and_then(|p| p.file_name())
+                        .map(|n| n.to_string_lossy().to_string())
+                        .unwrap_or_else(|| "새 문서.hwpx".to_string())
+                };
+                let is_hwp = default_name.to_lowercase().ends_with(".hwp");
+                let mut dlg = rfd::FileDialog::new()
                     .set_title("문서 저장")
-                    .save_file();
+                    .set_file_name(&default_name);
+                if is_hwp {
+                    dlg = dlg
+                        .add_filter("한글 97-2024 문서 (HWP)", &["hwp"])
+                        .add_filter("한글 표준 문서 (HWPX)", &["hwpx"]);
+                } else {
+                    dlg = dlg
+                        .add_filter("한글 표준 문서 (HWPX)", &["hwpx"])
+                        .add_filter("한글 97-2024 문서 (HWP)", &["hwp"]);
+                }
+                let file_opt = dlg.save_file();
 
                 if let Some(file_path) = file_opt {
                     let json = serde_json::json!({
@@ -317,7 +393,8 @@ fn start_local_server(root: PathBuf, state: Arc<Mutex<AppState>>) -> (String, u1
                     let _ = request.respond(resp);
                     continue;
                 }
-                let resp = Response::from_string(r#"{"success":false}"#);
+                let resp = Response::from_string(r#"{"success":false}"#)
+                    .with_header(Header::from_bytes(&b"Content-Type"[..], &b"application/json"[..]).unwrap());
                 let _ = request.respond(resp);
                 continue;
             }
@@ -345,27 +422,40 @@ fn start_local_server(root: PathBuf, state: Arc<Mutex<AppState>>) -> (String, u1
                         let _ = fs::copy(&save_target, backup_path);
                     }
 
-                    if fs::write(&save_target, &data).is_ok() {
-                        let name = save_target.file_name().unwrap_or_default().to_string_lossy().to_string();
-                        {
-                            let mut st = state.lock().unwrap();
-                            st.current_file_path = Some(save_target.clone());
-                        }
+                    match fs::write(&save_target, &data) {
+                        Ok(()) => {
+                            let name = save_target.file_name().unwrap_or_default().to_string_lossy().to_string();
+                            {
+                                let mut st = state.lock().unwrap();
+                                st.current_file_path = Some(save_target.clone());
+                            }
 
-                        let json = serde_json::json!({
-                            "success": true,
-                            "name": name,
-                            "path": save_target.to_string_lossy(),
-                        });
-                        let resp = Response::from_string(json.to_string())
-                            .with_header(Header::from_bytes(&b"Content-Type"[..], &b"application/json"[..]).unwrap());
-                        let _ = request.respond(resp);
-                        continue;
+                            let json = serde_json::json!({
+                                "success": true,
+                                "name": name,
+                                "path": save_target.to_string_lossy(),
+                            });
+                            let resp = Response::from_string(json.to_string())
+                                .with_header(Header::from_bytes(&b"Content-Type"[..], &b"application/json"[..]).unwrap());
+                            let _ = request.respond(resp);
+                            continue;
+                        }
+                        Err(err) => {
+                            let json = serde_json::json!({
+                                "success": false,
+                                "error": format!("파일 쓰기 실패: {}", err),
+                            });
+                            let resp = Response::from_string(json.to_string())
+                                .with_header(Header::from_bytes(&b"Content-Type"[..], &b"application/json"[..]).unwrap());
+                            let _ = request.respond(resp);
+                            continue;
+                        }
                     }
                 }
 
                 // 저장 경로가 지정되지 않은 경우 새 저장 다이얼로그 폴백
-                let resp = Response::from_string(r#"{"success":false,"needSaveAs":true}"#);
+                let resp = Response::from_string(r#"{"success":false,"needSaveAs":true}"#)
+                    .with_header(Header::from_bytes(&b"Content-Type"[..], &b"application/json"[..]).unwrap());
                 let _ = request.respond(resp);
                 continue;
             }
@@ -442,6 +532,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("📄 초기 문서 로드: {}", p.display());
     }
 
+    let initial_title = cli_file
+        .as_ref()
+        .and_then(|p| p.file_name())
+        .map(|n| format!("{} — 한울 (Hanul)", n.to_string_lossy()))
+        .unwrap_or_else(|| "한울 (Hanul) · 한글 HWP/HWPX 에디터".to_string());
+
     let state = Arc::new(Mutex::new(AppState {
         current_file_path: cli_file,
     }));
@@ -494,14 +590,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     ])?;
 
     let edit_menu = Submenu::new("편집", true);
+    let undo_acc: Option<Accelerator> = "CmdOrCtrl+Z".parse().ok();
+    let redo_acc: Option<Accelerator> = "CmdOrCtrl+Shift+Z".parse().ok();
+    let select_all_acc: Option<Accelerator> = "CmdOrCtrl+A".parse().ok();
+    let find_acc: Option<Accelerator> = "CmdOrCtrl+F".parse().ok();
+
+    let undo_item = MenuItem::new("실행 취소", true, undo_acc);
+    let redo_item = MenuItem::new("다시 실행", true, redo_acc);
+    let select_all_item = MenuItem::new("모두 선택", true, select_all_acc);
+    let find_item = MenuItem::new("찾기...", true, find_acc);
+
     edit_menu.append_items(&[
-        &PredefinedMenuItem::undo(None),
-        &PredefinedMenuItem::redo(None),
+        &undo_item,
+        &redo_item,
         &PredefinedMenuItem::separator(),
         &PredefinedMenuItem::cut(None),
         &PredefinedMenuItem::copy(None),
         &PredefinedMenuItem::paste(None),
-        &PredefinedMenuItem::select_all(None),
+        &PredefinedMenuItem::separator(),
+        &select_all_item,
+        &PredefinedMenuItem::separator(),
+        &find_item,
     ])?;
 
     menu.append_items(&[&app_menu, &file_menu, &edit_menu])?;
@@ -510,7 +619,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     menu.init_for_nsapp();
 
     let window = WindowBuilder::new()
-        .with_title("한울 (Hanul) · 한글 HWP/HWPX 에디터")
+        .with_title(&initial_title)
         .with_inner_size(LogicalSize::new(1440.0, 960.0))
         .with_min_inner_size(LogicalSize::new(960.0, 640.0))
         .build(&event_loop)?;
@@ -525,6 +634,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let open_id = open_item.id().clone();
     let save_id = save_item.id().clone();
     let save_as_id = save_as_item.id().clone();
+    let undo_id = undo_item.id().clone();
+    let redo_id = redo_item.id().clone();
+    let select_all_id = select_all_item.id().clone();
+    let find_id = find_item.id().clone();
 
     let event_state = state.clone();
 
@@ -551,6 +664,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 if let Some(file_path) = opened_file {
                     let file_name = file_path.file_name().unwrap_or_default().to_string_lossy().to_string();
                     println!("📄 Finder 파일 열기 대상: {} ({})", file_name, file_path.display());
+                    window.set_title(&format!("{} — 한울 (Hanul)", file_name));
                     {
                         let mut st = event_state.lock().unwrap();
                         st.current_file_path = Some(file_path);
@@ -572,6 +686,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 if ext == "hwpx" || ext == "hwp" || ext == "hml" {
                     let file_name = path.file_name().unwrap_or_default().to_string_lossy().to_string();
                     println!("📄 윈도우 드래그 앤 드롭 파일 수신: {}", path.display());
+                    window.set_title(&format!("{} — 한울 (Hanul)", file_name));
                     {
                         let mut st = event_state.lock().unwrap();
                         st.current_file_path = Some(path);
@@ -587,6 +702,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
             Event::UserEvent(UserEvent::Menu(m_event)) => {
                 if m_event.id == new_id {
+                    window.set_title("새 문서.hwpx — 한울 (Hanul)");
                     let _ = webview.evaluate_script("window.__desktopApi.postMessage({ type: 'new' });");
                 } else if m_event.id == open_id {
                     let _ = webview.evaluate_script("window.__desktopApi.postMessage({ type: 'open' });");
@@ -594,6 +710,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let _ = webview.evaluate_script("window.__desktopApi.postMessage({ type: 'save' });");
                 } else if m_event.id == save_as_id {
                     let _ = webview.evaluate_script("window.__desktopApi.postMessage({ type: 'saveAs' });");
+                } else if m_event.id == undo_id {
+                    let _ = webview.evaluate_script(
+                        "(() => { const el = document.activeElement; const ih = window.__hanulEngine?.getInputHandler?.(); if (el && (el.tagName === 'INPUT' || (el.tagName === 'TEXTAREA' && el !== ih?.textarea))) { document.execCommand('undo'); } else { window.__hanulEngine?.command?.('edit:undo'); } })();"
+                    );
+                } else if m_event.id == redo_id {
+                    let _ = webview.evaluate_script(
+                        "(() => { const el = document.activeElement; const ih = window.__hanulEngine?.getInputHandler?.(); if (el && (el.tagName === 'INPUT' || (el.tagName === 'TEXTAREA' && el !== ih?.textarea))) { document.execCommand('redo'); } else { window.__hanulEngine?.command?.('edit:redo'); } })();"
+                    );
+                } else if m_event.id == select_all_id {
+                    let _ = webview.evaluate_script(
+                        "(() => { const el = document.activeElement; const ih = window.__hanulEngine?.getInputHandler?.(); if (el && (el.tagName === 'INPUT' || (el.tagName === 'TEXTAREA' && el !== ih?.textarea))) { el.select?.(); } else { window.__hanulEngine?.command?.('edit:select-all'); } })();"
+                    );
+                } else if m_event.id == find_id {
+                    let _ = webview.evaluate_script("window.__hanulEngine?.command?.('edit:find');");
                 }
             }
             Event::WindowEvent {
@@ -605,4 +735,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             _ => (),
         }
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_urlencoding_decode_korean_path() {
+        let encoded = "%2FUsers%2Fywlee%2F%EA%B1%B0%EB%9E%98%EB%AA%85%EC%84%B8%EC%84%9C%20(2).hwp";
+        assert_eq!(urlencoding_decode(encoded), "/Users/ywlee/거래명세서 (2).hwp");
+    }
+
+    #[test]
+    fn test_make_editor_html_strips_pwa_and_preserves_format() {
+        let root = get_base_root();
+        let html = make_editor_html(&root, "http://127.0.0.1:4321");
+        assert!(!html.contains("registerSW.js"), "dead PWA registerSW tag must be stripped");
+        assert!(!html.contains("manifest.webmanifest"), "dead manifest tag must be stripped");
+        assert!(html.contains("__hanulFormatFromName"), "format-preserving save helper must exist");
+        assert!(html.contains("assets/hanul-runtime.js"), "patched runtime entry must be injected");
+    }
 }

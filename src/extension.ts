@@ -66,7 +66,16 @@ class HanulProvider implements vscode.CustomEditorProvider<HanulDocument> {
           this.emitter.fire({ document });
         } else if (message.type === 'save' || message.type === 'saveAs') {
           panel.reveal(undefined, true);
+          const prevSaved = document.savedVersion;
+          const prevUri = document.uri.toString();
           await vscode.commands.executeCommand(message.type === 'saveAs' || document.uri.scheme === 'untitled' ? 'workbench.action.files.saveAs' : 'workbench.action.files.save');
+          if (document.ready) {
+            if (message.type === 'save' && document.uri.scheme !== 'untitled' && document.version === document.savedVersion) {
+              await this.request(document, 'saved', { name: basename(document.uri.path), version: document.version }).catch(() => {});
+            } else if (document.savedVersion === prevSaved && document.uri.toString() === prevUri) {
+              await this.request(document, 'saveCancelled').catch(() => {});
+            }
+          }
         } else if (message.type === 'new') {
           await vscode.commands.executeCommand('hanul.new');
         } else if (message.type === 'open') {
@@ -177,6 +186,7 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(vscode.commands.registerCommand('hanul.table.resizeBoundaryLeft', async () => postAction('tableAction', { action: 'resizeBoundary', key: 'ArrowLeft' })));
   context.subscriptions.push(vscode.commands.registerCommand('hanul.table.resizeBoundaryRight', async () => postAction('tableAction', { action: 'resizeBoundary', key: 'ArrowRight' })));
   context.subscriptions.push(vscode.commands.registerCommand('hanul.table.resizeBoundaryUp', async () => postAction('tableAction', { action: 'resizeBoundary', key: 'ArrowUp' })));
+  context.subscriptions.push(vscode.commands.registerCommand('hanul.table.resizeBoundaryDown', async () => postAction('tableAction', { action: 'resizeBoundary', key: 'ArrowDown' })));
   context.subscriptions.push(vscode.commands.registerCommand('hanul.table.toggleHandles', async () => postAction('tableAction', { action: 'toggleHandles' })));
   context.subscriptions.push(vscode.commands.registerCommand('hanul.table.cellProps', async () => postAction('tableAction', { action: 'props' })));
   context.subscriptions.push(vscode.commands.registerCommand('hanul.table.insertRow', async () => postAction('tableAction', { action: 'insertRow' })));

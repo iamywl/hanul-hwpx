@@ -336,6 +336,7 @@
     "check": "tsc --noEmit",
     "test": "node --test tests/*.test.mjs",
     "test:ui": "node scripts/smoke.mjs",
+    "test:hwp-edit": "node scripts/verify-hwp-editing.mjs",
     "test:table": "node scripts/test-table-resize.mjs",
     "test:shortcuts": "node scripts/test-shortcuts.mjs",
     "test:screenshots": "node scripts/capture-all-modals.mjs",
