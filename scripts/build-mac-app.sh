@@ -97,5 +97,17 @@ cat << 'EOF' > "$APP_BUNDLE/Contents/Info.plist"
 </plist>
 EOF
 
-echo "✨ Hanul.app 빌드 완료: $APP_BUNDLE"
-ls -lh "$APP_BUNDLE/Contents/MacOS/Hanul"
+echo "🔏 7. 로컬 코드 서명 (Ad-hoc codesign)..."
+codesign --force --deep -s - "$APP_BUNDLE"
+
+echo "📂 8. 시스템 /Applications 디렉토리에 설치 및 동기화..."
+rm -rf /Applications/Hanul.app
+cp -R "$APP_BUNDLE" /Applications/Hanul.app
+xattr -cr /Applications/Hanul.app
+codesign --force --deep -s - /Applications/Hanul.app
+
+echo "🔄 9. macOS LaunchServices 데이터베이스 갱신 (lsregister)..."
+/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f /Applications/Hanul.app 2>/dev/null || true
+
+echo "✨ Hanul.app 빌드 및 /Applications 설치 완료!"
+ls -lh /Applications/Hanul.app/Contents/MacOS/Hanul

@@ -76,23 +76,48 @@ fn make_editor_html(root: &Path, origin: &str) -> String {
     let bridge_script = format!(
         r#"<script>
 window.__hanulConfig = {{ base: "{}", media: "{}", development: false }};
+window.__desktopReady = false;
+window.__hanulOpenFile = async function(fileName) {{
+  try {{
+    const r = await fetch('/api/file/raw');
+    if (!r.ok) return;
+    const buf = await r.arrayBuffer();
+    const send = (method, params = {{}}) => window.postMessage({{ type: 'request', id: crypto.randomUUID(), method, params }}, location.origin);
+    send('load', {{ bytes: new Uint8Array(buf), name: fileName || '문서.hwpx' }});
+  }} catch (e) {{
+    console.error('문서 로드 실패:', e);
+  }}
+}};
 window.__desktopApi = {{
   postMessage(m) {{
     window.__previewMessages = window.__previewMessages || [];
     window.__previewMessages.push(m);
     const send = (method, params = {{}}) => window.postMessage({{ type: 'request', id: crypto.randomUUID(), method, params }}, location.origin);
     if (m.type === 'ready') {{
+      window.__desktopReady = true;
       fetch('/api/file/initial')
         .then(r => r.json())
-        .then(res => {{
-          if (res.hasFile && res.bytes) {{
-            const binary = atob(res.bytes);
-            const bytes = new Uint8Array(binary.length);
-            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-            send('load', {{ bytes: Array.from(bytes), name: res.name }});
-          }} else {{
-            send('load', {{ bytes: [], name: '새 문서.hwpx' }});
+        .then(async res => {{
+          if (res.hasFile) {{
+            try {{
+              const rawResp = await fetch('/api/file/raw');
+              if (rawResp.ok) {{
+                const buffer = await rawResp.arrayBuffer();
+                send('load', {{ bytes: new Uint8Array(buffer), name: res.name }});
+                return;
+              }}
+            }} catch (err) {{
+              console.warn('[desktop] raw fetch 실패, fallback:', err);
+            }}
+            if (res.bytes) {{
+              const binary = atob(res.bytes);
+              const bytes = new Uint8Array(binary.length);
+              for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+              send('load', {{ bytes: bytes, name: res.name }});
+              return;
+            }}
           }}
+          send('load', {{ bytes: [], name: '새 문서.hwpx' }});
         }})
         .catch(() => send('load', {{ bytes: [], name: '새 문서.hwpx' }}));
     }} else if (m.type === 'new') {{
@@ -111,12 +136,22 @@ window.__desktopApi = {{
     }} else if (m.type === 'open') {{
       fetch('/api/file/dialog-open', {{ method: 'POST' }})
         .then(r => r.json())
-        .then(res => {{
-          if (res.bytes && res.name) {{
-            const binary = atob(res.bytes);
-            const bytes = new Uint8Array(binary.length);
-            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-            send('load', {{ bytes: Array.from(bytes), name: res.name }});
+        .then(async res => {{
+          if (res.success) {{
+            try {{
+              const rawResp = await fetch('/api/file/raw');
+              if (rawResp.ok) {{
+                const buffer = await rawResp.arrayBuffer();
+                send('load', {{ bytes: new Uint8Array(buffer), name: res.name }});
+                return;
+              }}
+            }} catch (e) {{}}
+            if (res.bytes && res.name) {{
+              const binary = atob(res.bytes);
+              const bytes = new Uint8Array(binary.length);
+              for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+              send('load', {{ bytes: bytes, name: res.name }});
+            }}
           }}
         }});
     }} else if (m.type === 'response' && m.result && m.result.bytes) {{
@@ -204,6 +239,29 @@ fn start_local_server(root: PathBuf, state: Arc<Mutex<AppState>>) -> (String, u1
 
                 let resp = Response::from_string(r#"{"hasFile":false}"#)
                     .with_header(Header::from_bytes(&b"Content-Type"[..], &b"application/json"[..]).unwrap());
+                let _ = request.respond(resp);
+                continue;
+            }
+
+            // 1.6. 고속 바이너리 스트리밍 요청 API
+            if path == "/api/file/raw" && request.method() == &Method::Get {
+                let current = {
+                    let st = state.lock().unwrap();
+                    st.current_file_path.clone()
+                };
+
+                if let Some(ref file_path) = current {
+                    if let Ok(bytes) = fs::read(file_path) {
+                        let resp = Response::from_data(bytes)
+                            .with_header(Header::from_bytes(&b"Content-Type"[..], &b"application/octet-stream"[..]).unwrap())
+                            .with_header(Header::from_bytes(&b"Access-Control-Allow-Origin"[..], &b"*"[..]).unwrap());
+                        let _ = request.respond(resp);
+                        continue;
+                    }
+                }
+
+                let resp = Response::from_string("File Not Found")
+                    .with_status_code(StatusCode(404));
                 let _ = request.respond(resp);
                 continue;
             }
@@ -468,12 +526,64 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let save_id = save_item.id().clone();
     let save_as_id = save_as_item.id().clone();
 
+    let event_state = state.clone();
+
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
 
         match event {
             Event::NewEvents(StartCause::Init) => {
                 println!("✨ 한울 macOS 네이티브 데스크톱 윈도우 초기화 완료.");
+            }
+            Event::Opened { urls } => {
+                println!("📂 macOS Event::Opened 수신 (Finder 파일 열기): {:?}", urls);
+                let mut opened_file: Option<PathBuf> = None;
+                for u in urls {
+                    if let Ok(p) = u.to_file_path() {
+                        let ext = p.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
+                        if ext == "hwpx" || ext == "hwp" || ext == "hml" {
+                            opened_file = Some(p);
+                            break;
+                        }
+                    }
+                }
+
+                if let Some(file_path) = opened_file {
+                    let file_name = file_path.file_name().unwrap_or_default().to_string_lossy().to_string();
+                    println!("📄 Finder 파일 열기 대상: {} ({})", file_name, file_path.display());
+                    {
+                        let mut st = event_state.lock().unwrap();
+                        st.current_file_path = Some(file_path);
+                    }
+                    let script = format!(
+                        r#"if (window.__desktopReady && typeof window.__hanulOpenFile === 'function') {{
+                            window.__hanulOpenFile({});
+                        }}"#,
+                        serde_json::to_string(&file_name).unwrap_or_else(|_| "\"문서.hwpx\"".to_string())
+                    );
+                    let _ = webview.evaluate_script(&script);
+                }
+            }
+            Event::WindowEvent {
+                event: WindowEvent::DroppedFile(path),
+                ..
+            } => {
+                let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
+                if ext == "hwpx" || ext == "hwp" || ext == "hml" {
+                    let file_name = path.file_name().unwrap_or_default().to_string_lossy().to_string();
+                    println!("📄 윈도우 드래그 앤 드롭 파일 수신: {}", path.display());
+                    {
+                        let mut st = event_state.lock().unwrap();
+                        st.current_file_path = Some(path);
+                    }
+                    let script = format!(
+                        r#"if (window.__desktopReady && typeof window.__hanulOpenFile === 'function') {{
+                            window.__hanulOpenFile({});
+                        }}"#,
+                        serde_json::to_string(&file_name).unwrap_or_else(|_| "\"문서.hwpx\"".to_string())
+                    );
+                    let _ = webview.evaluate_script(&script);
+                }
             }
             Event::UserEvent(UserEvent::Menu(m_event)) => {
                 if m_event.id == new_id {

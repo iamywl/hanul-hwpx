@@ -1547,7 +1547,6 @@ body.vscode-high-contrast .modal-btn.primary {
 /* ==========================================================================
    11-A. 라이트 모드 대화상자 (Light Mode - Frosted White Glass)
    ========================================================================== */
-:root:not([data-theme-effective="dark"]) .modal-overlay,
 :root[data-theme-effective="light"] .modal-overlay,
 body.vscode-light .modal-overlay {
   background: rgba(15, 23, 42, 0.35) !important;
@@ -1555,11 +1554,6 @@ body.vscode-light .modal-overlay {
   -webkit-backdrop-filter: blur(12px) !important;
 }
 
-:root:not([data-theme-effective="dark"]) .dialog-wrap,
-:root:not([data-theme-effective="dark"]) .dialog-panel,
-:root:not([data-theme-effective="dark"]) .find-dialog,
-:root:not([data-theme-effective="dark"]) .page-setup-dialog,
-:root:not([data-theme-effective="dark"]) .hanul-modal-content,
 :root[data-theme-effective="light"] .dialog-wrap,
 :root[data-theme-effective="light"] .dialog-panel,
 :root[data-theme-effective="light"] .find-dialog,
@@ -1578,8 +1572,6 @@ body.vscode-light .hanul-modal-content {
   color: #0f172a !important;
 }
 
-:root:not([data-theme-effective="dark"]) .dialog-header,
-:root:not([data-theme-effective="dark"]) .dialog-title,
 :root[data-theme-effective="light"] .dialog-header,
 :root[data-theme-effective="light"] .dialog-title,
 body.vscode-light .dialog-header,
@@ -1589,21 +1581,17 @@ body.vscode-light .dialog-title {
   color: #0f172a !important;
 }
 
-:root:not([data-theme-effective="dark"]) .dialog-tabs,
 :root[data-theme-effective="light"] .dialog-tabs,
 body.vscode-light .dialog-tabs {
   background: rgba(0, 0, 0, 0.04) !important;
   border: 1px solid rgba(0, 0, 0, 0.06) !important;
 }
 
-:root:not([data-theme-effective="dark"]) .dialog-tab,
 :root[data-theme-effective="light"] .dialog-tab,
 body.vscode-light .dialog-tab {
   color: #64748b !important;
 }
 
-:root:not([data-theme-effective="dark"]) .dialog-tab.active,
-:root:not([data-theme-effective="dark"]) .dialog-tab[aria-selected="true"],
 :root[data-theme-effective="light"] .dialog-tab.active,
 :root[data-theme-effective="light"] .dialog-tab[aria-selected="true"],
 body.vscode-light .dialog-tab.active {
@@ -1613,7 +1601,6 @@ body.vscode-light .dialog-tab.active {
   font-weight: 600 !important;
 }
 
-:root:not([data-theme-effective="dark"]) .dialog-section,
 :root[data-theme-effective="light"] .dialog-section,
 body.vscode-light .dialog-section {
   background: #f8fafc !important;
@@ -1621,15 +1608,12 @@ body.vscode-light .dialog-section {
   border-radius: 8px !important;
 }
 
-:root:not([data-theme-effective="dark"]) .dialog-section-title,
 :root[data-theme-effective="light"] .dialog-section-title,
 body.vscode-light .dialog-section-title {
   color: #1e40af !important;
   font-weight: 650 !important;
 }
 
-:root:not([data-theme-effective="dark"]) .dialog-label,
-:root:not([data-theme-effective="dark"]) .dialog-unit,
 :root[data-theme-effective="light"] .dialog-label,
 :root[data-theme-effective="light"] .dialog-unit,
 body.vscode-light .dialog-label,
@@ -1637,9 +1621,6 @@ body.vscode-light .dialog-unit {
   color: #334155 !important;
 }
 
-:root:not([data-theme-effective="dark"]) .dialog-input,
-:root:not([data-theme-effective="dark"]) .dialog-text-input,
-:root:not([data-theme-effective="dark"]) .dialog-select,
 :root[data-theme-effective="light"] .dialog-input,
 :root[data-theme-effective="light"] .dialog-text-input,
 :root[data-theme-effective="light"] .dialog-select,
@@ -1652,9 +1633,6 @@ body.vscode-light .dialog-select {
   color-scheme: light !important;
 }
 
-:root:not([data-theme-effective="dark"]) .dialog-input:focus,
-:root:not([data-theme-effective="dark"]) .dialog-text-input:focus,
-:root:not([data-theme-effective="dark"]) .dialog-select:focus,
 :root[data-theme-effective="light"] .dialog-input:focus,
 :root[data-theme-effective="light"] .dialog-text-input:focus,
 :root[data-theme-effective="light"] .dialog-select:focus,
@@ -1666,7 +1644,6 @@ body.vscode-light .dialog-select:focus {
   outline: none !important;
 }
 
-:root:not([data-theme-effective="dark"]) .icon-radio-card,
 :root[data-theme-effective="light"] .icon-radio-card,
 body.vscode-light .icon-radio-card {
   background: #ffffff !important;
@@ -1674,14 +1651,12 @@ body.vscode-light .icon-radio-card {
   color: #1e293b !important;
 }
 
-:root:not([data-theme-effective="dark"]) .icon-radio-card:hover,
 :root[data-theme-effective="light"] .icon-radio-card:hover,
 body.vscode-light .icon-radio-card:hover {
   border-color: #3b82f6 !important;
   background: #eff6ff !important;
 }
 
-:root:not([data-theme-effective="dark"]) .icon-radio-card.selected,
 :root[data-theme-effective="light"] .icon-radio-card.selected,
 body.vscode-light .icon-radio-card.selected {
   border-color: #2563eb !important;
@@ -1689,20 +1664,17 @@ body.vscode-light .icon-radio-card.selected {
   box-shadow: 0 0 0 1px #2563eb !important;
 }
 
-:root:not([data-theme-effective="dark"]) .icon-radio-text,
 :root[data-theme-effective="light"] .icon-radio-text,
 body.vscode-light .icon-radio-text {
   color: #1e293b !important;
 }
 
-:root:not([data-theme-effective="dark"]) .dialog-footer,
 :root[data-theme-effective="light"] .dialog-footer,
 body.vscode-light .dialog-footer {
   border-top: 1px solid rgba(0, 0, 0, 0.08) !important;
   background: rgba(248, 250, 252, 0.95) !important;
 }
 
-:root:not([data-theme-effective="dark"]) .dialog-btn:not(.dialog-btn-primary),
 :root[data-theme-effective="light"] .dialog-btn:not(.dialog-btn-primary),
 body.vscode-light .dialog-btn:not(.dialog-btn-primary) {
   border: 1px solid #cbd5e1 !important;
@@ -1710,7 +1682,6 @@ body.vscode-light .dialog-btn:not(.dialog-btn-primary) {
   color: #334155 !important;
 }
 
-:root:not([data-theme-effective="dark"]) .dialog-btn:not(.dialog-btn-primary):hover,
 :root[data-theme-effective="light"] .dialog-btn:not(.dialog-btn-primary):hover,
 body.vscode-light .dialog-btn:not(.dialog-btn-primary):hover {
   background: #f1f5f9 !important;
@@ -1718,8 +1689,6 @@ body.vscode-light .dialog-btn:not(.dialog-btn-primary):hover {
   color: #0f172a !important;
 }
 
-:root:not([data-theme-effective="dark"]) .dialog-close,
-:root:not([data-theme-effective="dark"]) .modal-close-btn,
 :root[data-theme-effective="light"] .dialog-close,
 :root[data-theme-effective="light"] .modal-close-btn,
 body.vscode-light .dialog-close,
@@ -1727,14 +1696,53 @@ body.vscode-light .modal-close-btn {
   color: #64748b !important;
 }
 
-:root:not([data-theme-effective="dark"]) .dialog-close:hover,
-:root:not([data-theme-effective="dark"]) .modal-close-btn:hover,
 :root[data-theme-effective="light"] .dialog-close:hover,
 :root[data-theme-effective="light"] .modal-close-btn:hover,
 body.vscode-light .dialog-close:hover,
 body.vscode-light .modal-close-btn:hover {
   background: rgba(0, 0, 0, 0.08) !important;
   color: #0f172a !important;
+}
+
+/* @media (prefers-color-scheme: light) 폴백 격리 */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme-effective="dark"]) .modal-overlay {
+    background: rgba(15, 23, 42, 0.35) !important;
+  }
+  :root:not([data-theme-effective="dark"]) .dialog-wrap,
+  :root:not([data-theme-effective="dark"]) .dialog-panel,
+  :root:not([data-theme-effective="dark"]) .find-dialog,
+  :root:not([data-theme-effective="dark"]) .page-setup-dialog,
+  :root:not([data-theme-effective="dark"]) .hanul-modal-content {
+    background: rgba(255, 255, 255, 0.96) !important;
+    color: #0f172a !important;
+  }
+  :root:not([data-theme-effective="dark"]) .dialog-header,
+  :root:not([data-theme-effective="dark"]) .dialog-title {
+    background: rgba(248, 250, 252, 0.95) !important;
+    color: #0f172a !important;
+  }
+  :root:not([data-theme-effective="dark"]) .dialog-label,
+  :root:not([data-theme-effective="dark"]) .dialog-unit {
+    color: #334155 !important;
+  }
+  :root:not([data-theme-effective="dark"]) .dialog-input,
+  :root:not([data-theme-effective="dark"]) .dialog-text-input,
+  :root:not([data-theme-effective="dark"]) .dialog-select {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #0f172a !important;
+    color-scheme: light !important;
+  }
+  :root:not([data-theme-effective="dark"]) .dialog-footer {
+    border-top: 1px solid rgba(0, 0, 0, 0.08) !important;
+    background: rgba(248, 250, 252, 0.95) !important;
+  }
+  :root:not([data-theme-effective="dark"]) .dialog-btn:not(.dialog-btn-primary) {
+    border: 1px solid #cbd5e1 !important;
+    background: #ffffff !important;
+    color: #334155 !important;
+  }
 }
 
 /* ==========================================================================

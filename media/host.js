@@ -21,15 +21,28 @@
     return originalFetch(input, init);
   };
 
-  // 한컴 표준 위지윅 리본 툴바 및 눈금자 기본 활성화 (한컴오피스 수준 사용감 복원)
-  try {
-    const settings = JSON.parse(localStorage.getItem('rhwp-settings') || '{}');
-    const isDark = document.body.classList.contains('vscode-dark') || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    settings.theme = { ...settings.theme, skin: 'flat', mode: isDark ? 'dark' : 'light' };
-    settings.view = { ...settings.view, toolbarBasic: true, ruler: true };
-    localStorage.setItem('rhwp-settings', JSON.stringify(settings));
+  // 한컴 표준 위지윅 리본 툴바 및 눈금자 기본 활성화, 테마 완벽 동기화 (다크/라이트 격리)
+  const syncEffectiveTheme = () => {
+    const isDark = (document.body && (document.body.classList.contains('vscode-dark') || document.body.classList.contains('vscode-high-contrast'))) ||
+                   (!document.body?.classList.contains('vscode-light') && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    const effective = isDark ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme-effective', effective);
+    document.documentElement.dataset.themeEffective = effective;
+    try {
+      const settings = JSON.parse(localStorage.getItem('rhwp-settings') || '{}');
+      settings.theme = { ...settings.theme, skin: 'flat', mode: effective };
+      settings.view = { ...settings.view, toolbarBasic: true, ruler: true };
+      localStorage.setItem('rhwp-settings', JSON.stringify(settings));
+    } catch {}
     document.documentElement.dataset.toolboxBasic = 'visible';
-  } catch {}
+  };
+  syncEffectiveTheme();
+  document.addEventListener('DOMContentLoaded', syncEffectiveTheme);
+  if (window.matchMedia) {
+    try {
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', syncEffectiveTheme);
+    } catch {}
+  }
 
   let version = 0, suppress = true, loaded = false, composing = false;
   const engine = () => window.__hanulEngine;
