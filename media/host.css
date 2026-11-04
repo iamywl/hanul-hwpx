@@ -54,6 +54,8 @@ body {
   height: 38px !important;
   display: flex !important;
   align-items: center !important;
+  gap: 2px !important;
+  min-width: 0 !important;
   padding: 0 12px !important;
   z-index: 200 !important;
 }
@@ -66,6 +68,7 @@ body {
   color: var(--hanul-text-primary) !important;
   transition: all 0.15s ease;
   user-select: none;
+  flex-shrink: 0;
 }
 
 #menu-bar .menu-item:hover {
@@ -78,7 +81,10 @@ body {
   margin-left: auto;
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+  flex: 1 1 auto;
   user-select: none;
 }
 
@@ -91,7 +97,15 @@ body {
   border-radius: 8px;
   padding: 2px;
   gap: 2px;
+  min-width: 0;
+  flex: 0 1 auto;
+  overflow-x: auto;
+  scrollbar-width: none;
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.hanul-glass-segment::-webkit-scrollbar {
+  display: none;
 }
 
 .hanul-glass-pill {
@@ -99,7 +113,7 @@ body {
   align-items: center;
   gap: 4px;
   height: 23px;
-  padding: 0 8px;
+  padding: 0 7px;
   border: none;
   border-radius: 6px;
   background: transparent;
@@ -108,6 +122,7 @@ body {
   font-weight: 550;
   cursor: pointer;
   white-space: nowrap;
+  flex-shrink: 0;
   transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -124,15 +139,15 @@ body {
 .hanul-glass-pill .pill-hotkey {
   font-size: 10px;
   font-weight: 600;
-  color: #475569;
-  background: rgba(0, 0, 0, 0.06);
+  color: #334155;
+  background: rgba(15, 23, 42, 0.07);
   padding: 1px 4px;
   border-radius: 4px;
 }
 
 .hanul-glass-pill .pill-icon {
   font-weight: 700;
-  color: var(--hanul-accent-blue);
+  color: #1d4ed8;
 }
 
 /* 상태 뱃지 (Pill Status Badge) */
@@ -143,11 +158,12 @@ body {
   font-size: 11.5px;
   font-weight: 550;
   color: var(--hanul-text-secondary);
-  padding: 3px 10px;
+  padding: 3px 9px;
   border-radius: 9999px;
   background: rgba(0, 0, 0, 0.04);
   border: 1px solid rgba(0, 0, 0, 0.06);
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .hanul-menu-status .status-dot {
@@ -187,7 +203,7 @@ body {
   justify-content: center;
   gap: 5px;
   height: 25px;
-  padding: 0 11px;
+  padding: 0 10px;
   border: 1px solid rgba(0, 0, 0, 0.12);
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.9);
@@ -196,6 +212,7 @@ body {
   font-weight: 550;
   cursor: pointer;
   white-space: nowrap;
+  flex-shrink: 0;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.8);
   transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -212,21 +229,56 @@ body {
 }
 
 .hanul-glass-btn.primary {
-  background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
-  border-color: #1d4ed8;
-  color: #ffffff;
+  background-color: #1d4ed8 !important;
+  background-image: linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%) !important;
+  border-color: #1e40af !important;
+  color: #ffffff !important;
   font-weight: 600;
-  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  box-shadow: 0 2px 6px rgba(29, 78, 216, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 
 .hanul-glass-btn.primary:hover {
-  background: linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%);
-  box-shadow: 0 3px 10px rgba(37, 99, 235, 0.45);
+  background-color: #1e40af !important;
+  background-image: linear-gradient(180deg, #1d4ed8 0%, #1e40af 100%) !important;
+  box-shadow: 0 3px 10px rgba(29, 78, 216, 0.45);
+}
+
+@media (max-width: 1420px) {
+  #menu-bar {
+    padding: 0 8px !important;
+  }
+  #menu-bar .menu-item {
+    padding: 4px 6px !important;
+    font-size: 12px !important;
+  }
+  .hanul-glass-pill .pill-hotkey {
+    display: none !important;
+  }
+  .hanul-glass-pill {
+    padding: 0 6px;
+  }
+}
+
+@media (max-width: 1140px) {
+  .hanul-menu-status .status-text {
+    display: none;
+  }
+  .hanul-menu-status {
+    padding: 5px;
+  }
 }
 
 /* ==========================================================================
    2. 기본 아이콘 툴바 글래스모피즘 (#icon-toolbar)
    ========================================================================== */
+#studio-header [hidden],
+#menu-bar [hidden],
+#icon-toolbar [hidden],
+#style-bar [hidden],
+#status-bar [hidden] {
+  display: none !important;
+}
+
 #icon-toolbar {
   background: rgba(255, 255, 255, 0.72) !important;
   backdrop-filter: blur(20px) !important;
@@ -243,13 +295,13 @@ body {
   background: transparent !important;
 }
 
-#icon-toolbar .tb-group {
+#icon-toolbar .tb-group:not([hidden]) {
   display: inline-flex !important;
   align-items: center !important;
   gap: 2px !important;
 }
 
-#icon-toolbar .tb-btn {
+#icon-toolbar .tb-btn:not([hidden]) {
   display: inline-flex !important;
   flex-direction: column !important;
   align-items: center !important;
@@ -262,6 +314,11 @@ body {
   min-width: 32px !important;
   cursor: pointer !important;
   transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+#icon-toolbar .tb-icon-text {
+  color: #1d4ed8 !important;
+  font-weight: 700 !important;
 }
 
 #icon-toolbar .tb-btn:hover {
@@ -334,8 +391,12 @@ body {
 #style-bar .sb-field-label {
   font-size: 11px !important;
   font-weight: 600 !important;
-  color: var(--hanul-text-muted) !important;
+  color: #334155 !important;
   margin-right: 4px !important;
+}
+
+#style-bar .sb-highlight-icon {
+  color: #92400e !important;
 }
 
 #style-bar .sb-btn {
@@ -416,8 +477,8 @@ body {
   display: inline-flex !important;
   flex-wrap: nowrap !important;
   align-items: center !important;
-  gap: 6px !important;
-  padding: 6px 14px !important;
+  gap: 4px !important;
+  padding: 5px 11px !important;
   background: rgba(255, 255, 255, 0.95) !important;
   backdrop-filter: blur(32px) saturate(200%) !important;
   -webkit-backdrop-filter: blur(32px) saturate(200%) !important;
@@ -429,9 +490,22 @@ body {
   pointer-events: none !important;
   transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
   user-select: none !important;
-  max-width: 96vw !important;
+  max-width: calc(100vw - 24px) !important;
   overflow-x: auto !important;
   scrollbar-width: thin !important;
+}
+
+@media (max-width: 1150px) {
+  .hanul-table-hud,
+  .hanul-table-bar,
+  .hanul-image-hud,
+  .hanul-image-bar {
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    border-radius: 16px !important;
+    padding: 6px 10px !important;
+    row-gap: 4px !important;
+  }
 }
 
 .hanul-table-hud.is-active,
@@ -447,7 +521,7 @@ body {
 .hud-group {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 2.5px;
   flex-shrink: 0 !important;
   white-space: nowrap !important;
 }
@@ -457,7 +531,7 @@ body {
   width: 1px;
   height: 18px;
   background: rgba(0, 0, 0, 0.12);
-  margin: 0 3px;
+  margin: 0 1px;
   flex-shrink: 0 !important;
 }
 
@@ -465,14 +539,14 @@ body {
 .hanul-hud-badge {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   height: 26px;
-  padding: 0 11px;
+  padding: 0 9px;
   border-radius: 9999px;
   border: 1px solid rgba(0, 0, 0, 0.08);
   background: rgba(0, 0, 0, 0.04);
   color: var(--hanul-text-primary);
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap !important;
@@ -517,12 +591,12 @@ body {
   align-items: center;
   justify-content: center;
   height: 26px;
-  padding: 0 9px;
+  padding: 0 5.5px;
   border: 1px solid rgba(0, 0, 0, 0.1);
   border-radius: 7px;
   background: rgba(255, 255, 255, 0.85);
   color: var(--hanul-text-primary);
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 550;
   cursor: pointer;
   white-space: nowrap;
@@ -543,8 +617,8 @@ body {
 }
 
 .hud-btn.mini {
-  padding: 0 6px;
-  font-size: 11px;
+  padding: 0 5px;
+  font-size: 10.5px;
 }
 
 .hud-btn.accent {
@@ -600,16 +674,17 @@ body {
   height: 22px;
   border-radius: 50%;
   border: none;
-  background: rgba(0, 0, 0, 0.05);
-  color: #64748b;
+  background: rgba(15, 23, 42, 0.07);
+  color: #334155;
   font-size: 12px;
   cursor: pointer;
+  flex-shrink: 0;
   transition: all 0.15s ease;
   margin-left: 2px;
 }
 
 .hud-close-btn:hover {
-  background: rgba(0, 0, 0, 0.12);
+  background: rgba(15, 23, 42, 0.14);
   color: #0f172a;
 }
 
@@ -676,6 +751,25 @@ body {
 
 #status-bar .stb-item {
   color: var(--hanul-text-secondary) !important;
+}
+
+#status-bar .stb-message,
+#status-bar #sb-message {
+  color: #1e40af !important;
+  font-weight: 550 !important;
+}
+
+.menu-dropdown .md-item:not(.disabled) .md-shortcut,
+.menu-dropdown .md-sub:not(.disabled) > .md-arrow {
+  color: #475569 !important;
+}
+
+.menu-dropdown .md-item.disabled,
+.menu-dropdown .md-item.disabled .md-shortcut,
+.menu-dropdown .md-item.disabled .md-arrow,
+.menu-dropdown .md-sub.disabled,
+.menu-dropdown .md-sub.disabled > .md-arrow {
+  color: #7c8ba1 !important;
 }
 
 #status-bar .stb-divider {
@@ -929,8 +1023,14 @@ body.vscode-high-contrast .hanul-glass-pill:hover {
 :root[data-theme-effective="dark"] .hanul-glass-pill .pill-hotkey,
 body.vscode-dark .hanul-glass-pill .pill-hotkey,
 body.vscode-high-contrast .hanul-glass-pill .pill-hotkey {
-  color: #94a3b8;
-  background: rgba(255, 255, 255, 0.1);
+  color: #e2e8f0 !important;
+  background: rgba(255, 255, 255, 0.14) !important;
+}
+
+:root[data-theme-effective="dark"] .hanul-glass-pill .pill-icon,
+body.vscode-dark .hanul-glass-pill .pill-icon,
+body.vscode-high-contrast .hanul-glass-pill .pill-icon {
+  color: #93c5fd !important;
 }
 
 :root[data-theme-effective="dark"] .hanul-menu-status,
@@ -983,6 +1083,12 @@ body.vscode-high-contrast #icon-toolbar .tb-label {
   color: #cbd5e1 !important;
 }
 
+:root[data-theme-effective="dark"] #icon-toolbar .tb-icon-text,
+body.vscode-dark #icon-toolbar .tb-icon-text,
+body.vscode-high-contrast #icon-toolbar .tb-icon-text {
+  color: #93c5fd !important;
+}
+
 :root[data-theme-effective="dark"] #icon-toolbar .tb-sep,
 body.vscode-dark #icon-toolbar .tb-sep,
 body.vscode-high-contrast #icon-toolbar .tb-sep {
@@ -1020,6 +1126,18 @@ body.vscode-dark #style-bar .sb-btn:hover,
 body.vscode-high-contrast #style-bar .sb-btn:hover {
   background: rgba(255, 255, 255, 0.16) !important;
   color: #ffffff !important;
+}
+
+:root[data-theme-effective="dark"] #style-bar .sb-field-label,
+body.vscode-dark #style-bar .sb-field-label,
+body.vscode-high-contrast #style-bar .sb-field-label {
+  color: #cbd5e1 !important;
+}
+
+:root[data-theme-effective="dark"] #style-bar .sb-highlight-icon,
+body.vscode-dark #style-bar .sb-highlight-icon,
+body.vscode-high-contrast #style-bar .sb-highlight-icon {
+  color: #fbbf24 !important;
 }
 
 :root[data-theme-effective="dark"] #editor-area,
@@ -1104,6 +1222,20 @@ body.vscode-high-contrast .hud-btn.danger:hover {
   color: #ffffff !important;
 }
 
+:root[data-theme-effective="dark"] .hud-close-btn,
+body.vscode-dark .hud-close-btn,
+body.vscode-high-contrast .hud-close-btn {
+  color: #e2e8f0 !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+:root[data-theme-effective="dark"] .hud-close-btn:hover,
+body.vscode-dark .hud-close-btn:hover,
+body.vscode-high-contrast .hud-close-btn:hover {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+
 :root[data-theme-effective="dark"] #status-bar,
 body.vscode-dark #status-bar,
 body.vscode-high-contrast #status-bar {
@@ -1116,6 +1248,37 @@ body.vscode-high-contrast #status-bar {
 body.vscode-dark #status-bar .stb-item,
 body.vscode-high-contrast #status-bar .stb-item {
   color: #cbd5e1 !important;
+}
+
+:root[data-theme-effective="dark"] #status-bar .stb-message,
+:root[data-theme-effective="dark"] #status-bar #sb-message,
+body.vscode-dark #status-bar .stb-message,
+body.vscode-dark #status-bar #sb-message,
+body.vscode-high-contrast #status-bar .stb-message,
+body.vscode-high-contrast #status-bar #sb-message {
+  color: #93c5fd !important;
+}
+
+:root[data-theme-effective="dark"] .menu-dropdown .md-item:not(.disabled) .md-shortcut,
+:root[data-theme-effective="dark"] .menu-dropdown .md-sub:not(.disabled) > .md-arrow,
+body.vscode-dark .menu-dropdown .md-item:not(.disabled) .md-shortcut,
+body.vscode-dark .menu-dropdown .md-sub:not(.disabled) > .md-arrow,
+body.vscode-high-contrast .menu-dropdown .md-item:not(.disabled) .md-shortcut,
+body.vscode-high-contrast .menu-dropdown .md-sub:not(.disabled) > .md-arrow {
+  color: #cbd5e1 !important;
+}
+
+:root[data-theme-effective="dark"] .menu-dropdown .md-item.disabled,
+:root[data-theme-effective="dark"] .menu-dropdown .md-item.disabled .md-shortcut,
+:root[data-theme-effective="dark"] .menu-dropdown .md-item.disabled .md-arrow,
+:root[data-theme-effective="dark"] .menu-dropdown .md-sub.disabled,
+:root[data-theme-effective="dark"] .menu-dropdown .md-sub.disabled > .md-arrow,
+body.vscode-dark .menu-dropdown .md-item.disabled,
+body.vscode-dark .menu-dropdown .md-item.disabled .md-shortcut,
+body.vscode-dark .menu-dropdown .md-item.disabled .md-arrow,
+body.vscode-dark .menu-dropdown .md-sub.disabled,
+body.vscode-dark .menu-dropdown .md-sub.disabled > .md-arrow {
+  color: #828e9f !important;
 }
 
 :root[data-theme-effective="dark"] #status-bar .stb-divider,
@@ -1158,7 +1321,7 @@ body.vscode-high-contrast .modal-title {
 :root[data-theme-effective="dark"] .modal-close-btn,
 body.vscode-dark .modal-close-btn,
 body.vscode-high-contrast .modal-close-btn {
-  color: #94a3b8;
+  color: #cbd5e1;
 }
 
 :root[data-theme-effective="dark"] .modal-close-btn:hover,
@@ -1246,8 +1409,11 @@ body.vscode-high-contrast .modal-btn.primary {
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
   }
   :root:not([data-theme-effective="light"]) .hanul-glass-pill .pill-hotkey {
-    color: #94a3b8;
-    background: rgba(255, 255, 255, 0.1);
+    color: #e2e8f0 !important;
+    background: rgba(255, 255, 255, 0.14) !important;
+  }
+  :root:not([data-theme-effective="light"]) .hanul-glass-pill .pill-icon {
+    color: #93c5fd !important;
   }
   :root:not([data-theme-effective="light"]) .hanul-menu-status {
     background: rgba(255, 255, 255, 0.06);
@@ -1278,6 +1444,9 @@ body.vscode-high-contrast .modal-btn.primary {
   :root:not([data-theme-effective="light"]) #icon-toolbar .tb-label {
     color: #cbd5e1 !important;
   }
+  :root:not([data-theme-effective="light"]) #icon-toolbar .tb-icon-text {
+    color: #93c5fd !important;
+  }
   :root:not([data-theme-effective="light"]) #icon-toolbar .tb-sep {
     background: rgba(255, 255, 255, 0.12) !important;
   }
@@ -1300,6 +1469,12 @@ body.vscode-high-contrast .modal-btn.primary {
   :root:not([data-theme-effective="light"]) #style-bar .sb-btn:hover {
     background: rgba(255, 255, 255, 0.16) !important;
     color: #ffffff !important;
+  }
+  :root:not([data-theme-effective="light"]) #style-bar .sb-field-label {
+    color: #cbd5e1 !important;
+  }
+  :root:not([data-theme-effective="light"]) #style-bar .sb-highlight-icon {
+    color: #fbbf24 !important;
   }
   :root:not([data-theme-effective="light"]) #editor-area {
     background: #111216 !important;
@@ -1348,6 +1523,14 @@ body.vscode-high-contrast .modal-btn.primary {
     border-color: rgba(239, 68, 68, 0.45) !important;
     color: #ffffff !important;
   }
+  :root:not([data-theme-effective="light"]) .hud-close-btn {
+    color: #e2e8f0 !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+  }
+  :root:not([data-theme-effective="light"]) .hud-close-btn:hover {
+    color: #ffffff !important;
+    background: rgba(255, 255, 255, 0.2) !important;
+  }
   :root:not([data-theme-effective="light"]) #status-bar {
     background: rgba(22, 22, 28, 0.85) !important;
     border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
@@ -1355,6 +1538,21 @@ body.vscode-high-contrast .modal-btn.primary {
   }
   :root:not([data-theme-effective="light"]) #status-bar .stb-item {
     color: #cbd5e1 !important;
+  }
+  :root:not([data-theme-effective="light"]) #status-bar .stb-message,
+  :root:not([data-theme-effective="light"]) #status-bar #sb-message {
+    color: #93c5fd !important;
+  }
+  :root:not([data-theme-effective="light"]) .menu-dropdown .md-item:not(.disabled) .md-shortcut,
+  :root:not([data-theme-effective="light"]) .menu-dropdown .md-sub:not(.disabled) > .md-arrow {
+    color: #cbd5e1 !important;
+  }
+  :root:not([data-theme-effective="light"]) .menu-dropdown .md-item.disabled,
+  :root:not([data-theme-effective="light"]) .menu-dropdown .md-item.disabled .md-shortcut,
+  :root:not([data-theme-effective="light"]) .menu-dropdown .md-item.disabled .md-arrow,
+  :root:not([data-theme-effective="light"]) .menu-dropdown .md-sub.disabled,
+  :root:not([data-theme-effective="light"]) .menu-dropdown .md-sub.disabled > .md-arrow {
+    color: #828e9f !important;
   }
   :root:not([data-theme-effective="light"]) #status-bar .stb-divider {
     background: rgba(255, 255, 255, 0.12) !important;
@@ -1379,7 +1577,7 @@ body.vscode-high-contrast .modal-btn.primary {
     color: #ffffff;
   }
   :root:not([data-theme-effective="light"]) .modal-close-btn {
-    color: #94a3b8;
+    color: #cbd5e1;
   }
   :root:not([data-theme-effective="light"]) .modal-close-btn:hover {
     background: rgba(255, 255, 255, 0.1);
@@ -1452,6 +1650,8 @@ body.vscode-high-contrast .modal-btn.primary {
 .dialog-panel,
 .find-dialog,
 .page-setup-dialog,
+.sym-dialog,
+.eq-dialog,
 .hanul-modal-content {
   border-radius: 14px !important;
   font-family: -apple-system, BlinkMacSystemFont, 'Pretendard Variable', Pretendard, 'SF Pro Text', sans-serif !important;
@@ -1510,18 +1710,63 @@ body.vscode-high-contrast .modal-btn.primary {
 
 .dialog-btn-primary,
 .modal-btn.primary {
-  background: var(--hanul-accent-blue) !important;
-  border-color: var(--hanul-accent-blue) !important;
+  background-color: #1d4ed8 !important;
+  background-image: linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%) !important;
+  border-color: #1e40af !important;
   color: #ffffff !important;
   font-weight: 600 !important;
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35) !important;
+  box-shadow: 0 2px 8px rgba(29, 78, 216, 0.35) !important;
 }
 
 .dialog-btn-primary:hover,
 .modal-btn.primary:hover {
-  background: var(--hanul-accent-blue-hover) !important;
-  border-color: var(--hanul-accent-blue-hover) !important;
-  box-shadow: 0 3px 10px rgba(37, 99, 235, 0.45) !important;
+  background-color: #1e40af !important;
+  background-image: linear-gradient(180deg, #1d4ed8 0%, #1e40af 100%) !important;
+  border-color: #1e3a8a !important;
+  box-shadow: 0 3px 10px rgba(29, 78, 216, 0.45) !important;
+}
+
+.dialog-btn-group button.active,
+.menu-item.open > .menu-title,
+.goto-bookmark-item.selected,
+.fs-list-item.selected,
+.form-combo-dropdown .form-combo-item.selected,
+.sym-cell.selected {
+  background-color: #1d4ed8 !important;
+  border-color: #1e40af !important;
+  color: #ffffff !important;
+  font-weight: 650 !important;
+}
+
+.cs-preview,
+.eq-preview {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+.cs-icon-btn span[style*="text-stroke"] {
+  -webkit-text-stroke-color: #0f172a !important;
+}
+
+:root[data-theme-effective="dark"] .cs-icon-btn span[style*="text-stroke"],
+body.vscode-dark .cs-icon-btn span[style*="text-stroke"],
+body.vscode-high-contrast .cs-icon-btn span[style*="text-stroke"] {
+  -webkit-text-stroke-color: #f8fafc !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme-effective="light"]) .cs-icon-btn span[style*="text-stroke"] {
+    -webkit-text-stroke-color: #f8fafc !important;
+  }
+}
+
+.eq-preview-empty {
+  color: #475569 !important;
+}
+
+.eq-preview-error {
+  color: #b91c1c !important;
 }
 
 .dialog-close,
@@ -1536,11 +1781,23 @@ body.vscode-high-contrast .modal-btn.primary {
 }
 
 .dialog-input,
-.dialog-text-input,
+.dialog-text-input {
+  border-radius: 6px !important;
+  min-height: 28px !important;
+  height: auto !important;
+  padding: 4px 8px !important;
+  font-size: 12.5px !important;
+  line-height: 1.35 !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+}
+
 .dialog-select {
   border-radius: 6px !important;
-  padding: 5px 8px !important;
+  min-height: 28px !important;
+  height: auto !important;
+  padding: 3px 8px !important;
   font-size: 12.5px !important;
+  line-height: 1.35 !important;
   transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
 }
 
@@ -1589,7 +1846,7 @@ body.vscode-light .dialog-tabs {
 
 :root[data-theme-effective="light"] .dialog-tab,
 body.vscode-light .dialog-tab {
-  color: #64748b !important;
+  color: #334155 !important;
 }
 
 :root[data-theme-effective="light"] .dialog-tab.active,
@@ -1693,7 +1950,32 @@ body.vscode-light .dialog-btn:not(.dialog-btn-primary):hover {
 :root[data-theme-effective="light"] .modal-close-btn,
 body.vscode-light .dialog-close,
 body.vscode-light .modal-close-btn {
-  color: #64748b !important;
+  color: #334155 !important;
+}
+
+:root[data-theme-effective="light"] .sym-recent-empty,
+:root[data-theme-effective="light"] .eq-tab:not(.eq-tab-active),
+body.vscode-light .sym-recent-empty,
+body.vscode-light .eq-tab:not(.eq-tab-active) {
+  color: #334155 !important;
+}
+
+:root[data-theme-effective="light"] .find-dialog-title,
+body.vscode-light .find-dialog-title {
+  background: rgba(241, 245, 249, 0.96) !important;
+  color: #0f172a !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+:root[data-theme-effective="light"] .find-dialog-input,
+:root[data-theme-effective="light"] .eq-search-input,
+:root[data-theme-effective="light"] .eq-script,
+body.vscode-light .find-dialog-input,
+body.vscode-light .eq-search-input,
+body.vscode-light .eq-script {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
 }
 
 :root[data-theme-effective="light"] .dialog-close:hover,
@@ -1721,6 +2003,11 @@ body.vscode-light .modal-close-btn:hover {
   :root:not([data-theme-effective="dark"]) .dialog-title {
     background: rgba(248, 250, 252, 0.95) !important;
     color: #0f172a !important;
+  }
+  :root:not([data-theme-effective="dark"]) .dialog-tab,
+  :root:not([data-theme-effective="dark"]) .dialog-close,
+  :root:not([data-theme-effective="dark"]) .modal-close-btn {
+    color: #334155 !important;
   }
   :root:not([data-theme-effective="dark"]) .dialog-label,
   :root:not([data-theme-effective="dark"]) .dialog-unit {
@@ -1800,7 +2087,7 @@ body.vscode-high-contrast .dialog-tabs {
 :root[data-theme-effective="dark"] .dialog-tab,
 body.vscode-dark .dialog-tab,
 body.vscode-high-contrast .dialog-tab {
-  color: #94a3b8 !important;
+  color: #cbd5e1 !important;
 }
 
 :root[data-theme-effective="dark"] .dialog-tab.active,
@@ -1949,7 +2236,46 @@ body.vscode-dark .dialog-close,
 body.vscode-dark .modal-close-btn,
 body.vscode-high-contrast .dialog-close,
 body.vscode-high-contrast .modal-close-btn {
-  color: #94a3b8 !important;
+  color: #cbd5e1 !important;
+}
+
+:root[data-theme-effective="dark"] .sym-recent-empty,
+:root[data-theme-effective="dark"] .eq-tab:not(.eq-tab-active),
+body.vscode-dark .sym-recent-empty,
+body.vscode-dark .eq-tab:not(.eq-tab-active),
+body.vscode-high-contrast .sym-recent-empty,
+body.vscode-high-contrast .eq-tab:not(.eq-tab-active) {
+  color: #cbd5e1 !important;
+}
+
+:root[data-theme-effective="dark"] .eq-tab-active,
+body.vscode-dark .eq-tab-active,
+body.vscode-high-contrast .eq-tab-active {
+  background: #1e2028 !important;
+  color: #ffffff !important;
+}
+
+:root[data-theme-effective="dark"] .find-dialog-title,
+body.vscode-dark .find-dialog-title,
+body.vscode-high-contrast .find-dialog-title {
+  background: rgba(24, 26, 32, 0.98) !important;
+  color: #ffffff !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+:root[data-theme-effective="dark"] .find-dialog-input,
+:root[data-theme-effective="dark"] .eq-search-input,
+:root[data-theme-effective="dark"] .eq-script,
+body.vscode-dark .find-dialog-input,
+body.vscode-dark .eq-search-input,
+body.vscode-dark .eq-script,
+body.vscode-high-contrast .find-dialog-input,
+body.vscode-high-contrast .eq-search-input,
+body.vscode-high-contrast .eq-script {
+  background: #141519 !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.24) !important;
+  caret-color: #60a5fa !important;
 }
 
 :root[data-theme-effective="dark"] .dialog-close:hover,
@@ -1990,7 +2316,7 @@ body.vscode-high-contrast .modal-close-btn:hover {
     border: 1px solid rgba(255, 255, 255, 0.08) !important;
   }
   :root:not([data-theme-effective="light"]) .dialog-tab {
-    color: #94a3b8 !important;
+    color: #cbd5e1 !important;
   }
   :root:not([data-theme-effective="light"]) .dialog-tab.active,
   :root:not([data-theme-effective="light"]) .dialog-tab[aria-selected="true"] {
@@ -2048,8 +2374,27 @@ body.vscode-high-contrast .modal-close-btn:hover {
     color: #ffffff !important;
   }
   :root:not([data-theme-effective="light"]) .dialog-close,
-  :root:not([data-theme-effective="light"]) .modal-close-btn {
-    color: #94a3b8 !important;
+  :root:not([data-theme-effective="light"]) .modal-close-btn,
+  :root:not([data-theme-effective="light"]) .sym-recent-empty,
+  :root:not([data-theme-effective="light"]) .eq-tab:not(.eq-tab-active) {
+    color: #cbd5e1 !important;
+  }
+  :root:not([data-theme-effective="light"]) .eq-tab-active {
+    background: #1e2028 !important;
+    color: #ffffff !important;
+  }
+  :root:not([data-theme-effective="light"]) .find-dialog-title {
+    background: rgba(24, 26, 32, 0.98) !important;
+    color: #ffffff !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+  }
+  :root:not([data-theme-effective="light"]) .find-dialog-input,
+  :root:not([data-theme-effective="light"]) .eq-search-input,
+  :root:not([data-theme-effective="light"]) .eq-script {
+    background: #141519 !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.24) !important;
+    caret-color: #60a5fa !important;
   }
 }
 
@@ -2066,7 +2411,7 @@ body.hanul-object-selection-active .canvas-page-overlay {
   font-size: 11.5px;
   font-weight: 600;
   color: #ffffff;
-  background: #2563eb;
+  background-color: #1d4ed8;
   padding: 3px 10px;
   border-radius: 9999px;
   box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4);

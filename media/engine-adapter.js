@@ -35,6 +35,7 @@ window.__hanulEngine = {
   getInputHandler() { return Q; },
   getWasm() { return Y?.doc ?? null; },
   getEventBus() { return X; },
-  getDispatcher() { return wA; }
+  getDispatcher() { return wA; },
+  getRegistry() { return bA; }
 };
 

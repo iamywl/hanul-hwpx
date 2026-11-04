@@ -765,85 +765,242 @@
   };
   window.__hanulShowBulletShapeModal = showBulletShapeModal;
 
+  const clearSelectedCellsContent = () => {
+    const ih = engine()?.getInputHandler?.();
+    const wasm = ih?.wasm || engine()?.getWasm?.();
+    if (!ih || !wasm || !ih.cursor?.isInCellSelectionMode?.()) return false;
+    const range = ih.cursor.getSelectedCellRange?.();
+    const pos = ih.cursor.getPosition?.();
+    if (!range || !pos || pos.parentParaIndex === undefined || pos.controlIndex === undefined) return false;
+    const sec = pos.sectionIndex, ppi = pos.parentParaIndex, ci = pos.controlIndex;
+    let bboxes = [];
+    try {
+      const rawBboxes = wasm.getTableCellBboxes(sec, ppi, ci, 0) || [];
+      bboxes = typeof rawBboxes === 'string' ? JSON.parse(rawBboxes) : rawBboxes;
+    } catch {
+      return false;
+    }
+    const targetCells = [];
+    const seen = new Set();
+    for (const b of bboxes) {
+      if (seen.has(b.cellIdx)) continue;
+      if (b.row >= range.startRow && b.row <= range.endRow && b.col >= range.startCol && b.col <= range.endCol) {
+        seen.add(b.cellIdx);
+        try {
+          if (wasm.getCellProperties?.(sec, ppi, ci, b.cellIdx)?.cellProtect) continue;
+        } catch {}
+        targetCells.push(b.cellIdx);
+      }
+    }
+    if (targetCells.length === 0) {
+      notice('🔒 선택된 셀이 보호되어 있어 내용을 지울 수 없습니다.');
+      return false;
+    }
+    let clearedChars = 0;
+    ih.executeOperation?.({
+      kind: 'snapshot',
+      operationType: 'clearSelectedCells',
+      operation: (engineWasm) => {
+        for (const cellIdx of targetCells) {
+          const pCount = engineWasm.getCellParagraphCount?.(sec, ppi, ci, cellIdx) || 1;
+          for (let pi = pCount - 1; pi >= 0; pi--) {
+            const len = engineWasm.getCellParagraphLength?.(sec, ppi, ci, cellIdx, pi) || 0;
+            if (len > 0) {
+              engineWasm.deleteTextInCell(sec, ppi, ci, cellIdx, pi, 0, len);
+              clearedChars += len;
+            }
+            if (pi > 0) {
+              try { engineWasm.mergeParagraphInCell?.(sec, ppi, ci, cellIdx, pi - 1); } catch {}
+            }
+          }
+        }
+        return ih.cursor.getPosition?.();
+      }
+    });
+    ih.updateCellSelection?.();
+    if (clearedChars > 0) {
+      version++;
+      state('변경됨 · 저장 필요');
+      debouncedPostChanged();
+      notice(`🧹 선택된 셀 내용 지움 완료 (${targetCells.length}개 셀)`);
+    } else {
+      notice('선택된 셀이 이미 비어 있습니다.');
+    }
+    ih.textarea?.focus?.();
+    return true;
+  };
+  window.__hanulClearSelectedCells = clearSelectedCellsContent;
+
+  const runEquationCommand = () => {
+    const ih = engine()?.getInputHandler?.();
+    const ok = engine()?.command?.('insert:equation');
+    if (!ok && (ih?.cursor?.isInCell?.() || ih?.cursor?.isInCellSelectionMode?.() || ih?.cursor?.isInTableObjectSelection?.())) {
+      notice('⚠️ 표 셀 안에서는 수식을 직접 삽입할 수 없습니다. 표 바깥 본문 영역을 클릭한 뒤 수식(∑)을 넣어 주세요.');
+    }
+    return !!ok;
+  };
+
+  const runCellMergeCommand = () => {
+    const ih = engine()?.getInputHandler?.();
+    if (!ih?.hasMultiCellSelection?.()) {
+      notice('⚠️ 합칠 셀을 2개 이상 선택해 주세요. (F5 두 번 눌러 빨간 점 상태에서 방향키로 범위 선택)');
+      return false;
+    }
+    const ok = engine()?.command?.('table:cell-merge');
+    if (ok) notice('선택된 셀 합치기 완료 (M)');
+    return !!ok;
+  };
+
+  const runBlockFormulaCommand = (cmdId, label) => {
+    const ih = engine()?.getInputHandler?.();
+    if (!ih?.cursor?.isInCellSelectionMode?.() || !ih?.hasMultiCellSelection?.()) {
+      notice(`⚠️ ${label} 안내: 계산할 숫자 셀부터 결과 빈 셀까지 F5(빨간 점)로 범위 선택한 뒤 실행해 주세요.`);
+      return false;
+    }
+    return !!(engine()?.command?.(cmdId));
+  };
+
+  const wireMissingToolbarButtons = () => {
+    const bindTbBtn = (selector, handler) => {
+      document.querySelectorAll(selector).forEach(iconEl => {
+        const btn = iconEl.closest?.('.tb-btn') || (iconEl.classList?.contains('tb-btn') ? iconEl : null);
+        if (!btn || btn.dataset.hanulWired === '1') return;
+        btn.dataset.hanulWired = '1';
+        const run = (e) => {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          handler();
+        };
+        btn.addEventListener('mousedown', run);
+        btn.addEventListener('click', (e) => { if (e.detail === 0) run(e); });
+      });
+    };
+
+    bindTbBtn('#icon-toolbar .icon-cut', () => {
+      if (!engine()?.command?.('edit:cut')) {
+        notice('먼저 오려 둘 텍스트 블록이나 개체를 선택해 주세요.');
+      }
+    });
+    bindTbBtn('#icon-toolbar .icon-copy', () => {
+      if (!engine()?.command?.('edit:copy')) {
+        notice('먼저 복사할 텍스트 블록이나 개체를 선택해 주세요.');
+      }
+    });
+    bindTbBtn('#icon-toolbar .tb-paste, #icon-toolbar .icon-paste', () => {
+      engine()?.command?.('edit:paste');
+    });
+    bindTbBtn('#icon-toolbar .icon-hyperlink', () => {
+      showHyperlinkModal();
+    });
+    document.querySelectorAll('#icon-toolbar .tb-btn[data-cmd="table:create"]').forEach(btn => {
+      if (btn.dataset.hanulTableCreateHint === '1') return;
+      btn.dataset.hanulTableCreateHint = '1';
+      btn.addEventListener('mousedown', () => {
+        const ih = engine()?.getInputHandler?.();
+        if (ih?.cursor?.isInCell?.() || ih?.cursor?.isInCellSelectionMode?.()) {
+          notice('⚠️ 표 셀 안에는 중첩 표를 만들 수 없습니다. 표 바깥 본문 영역을 클릭한 뒤 표를 만들어 주세요.');
+        }
+      });
+    });
+  };
+
+  let origBorderOneCmd = null;
   const setupDispatcherOverrides = () => {
     const disp = engine()?.getDispatcher?.();
-    if (disp) {
-      disp.register?.({
+    const reg = engine()?.getRegistry?.() || disp?.registry;
+    if (reg?.register) {
+      if (!origBorderOneCmd) {
+        origBorderOneCmd = reg.get?.('table:border-one') || null;
+      }
+      reg.register({
         id: 'file:open',
         label: '불러오기(O)...',
         shortcutLabel: 'Ctrl+O',
         canExecute: () => true,
         execute: () => post({ type: 'open' })
       });
-      disp.register?.({
+      reg.register({
         id: 'file:new-doc',
         label: '새 문서(N)',
         shortcutLabel: 'Alt+N',
         canExecute: () => true,
         execute: () => post({ type: 'new' })
       });
-      disp.register?.({
+      reg.register({
         id: 'file:save',
         label: '저장하기(S)',
         shortcutLabel: 'Ctrl+S',
         canExecute: () => loaded,
         execute: () => { if (!loaded) return; state('저장 중…'); post({ type: 'save' }); }
       });
-      disp.register?.({
+      reg.register({
         id: 'file:save-as',
         label: '다른 이름으로 저장하기(A)...',
         shortcutLabel: 'Ctrl+Shift+S',
         canExecute: () => loaded,
         execute: () => { if (!loaded) return; state('저장 중…'); post({ type: 'saveAs' }); }
       });
-      disp.register?.({
+      reg.register({
         id: 'insert:hyperlink',
+        opensDialog: true,
         label: '하이퍼링크(H)...',
         shortcutLabel: 'Ctrl+K+H',
         icon: 'icon-hyperlink',
-        canExecute: () => true,
+        canExecute: () => loaded,
         execute: () => showHyperlinkModal()
       });
-      disp.register?.({
+      reg.register({
         id: 'format:bullet-shape',
+        opensDialog: true,
         label: '글머리표 모양...',
         shortcutLabel: 'Ctrl+Shift+B',
-        canExecute: () => true,
+        canExecute: () => loaded,
         execute: () => showBulletShapeModal()
       });
-      disp.register?.({
+      reg.register({
+        id: 'table:cell-clear-content',
+        label: '선택 셀 내용 지우기',
+        canExecute: () => !!(engine()?.getInputHandler?.()?.cursor?.isInCellSelectionMode?.()),
+        execute: () => clearSelectedCellsContent()
+      });
+      reg.register({
         id: 'table:border-one',
+        opensDialog: true,
         label: '셀 테두리/배경 - 하나의 셀처럼 적용(Z)...',
         shortcutLabel: undefined,
-        canExecute: () => true,
-        execute: () => {
+        canExecute: (ctx) => !!(ctx?.inTable || ctx?.inCellSelectionMode || ctx?.inTableObjectSelection),
+        execute: (services, opts) => {
           const ih = engine()?.getInputHandler?.();
           if (ih?.cursor?.isInCell?.() || ih?.cursor?.isInTableObjectSelection?.()) {
             if (!ih.hasMultiCellSelection?.()) {
               if (!ih.cursor?.isInCellSelectionMode?.()) {
                 ih.cursor?.enterCellSelectionMode?.();
               }
-              while (ih.cursor?.getCellSelectionPhase?.() !== 3) {
+              let guard = 0;
+              while (ih.cursor?.getCellSelectionPhase?.() !== 3 && guard++ < 4) {
                 ih.cursor?.advanceCellSelectionPhase?.();
               }
               ih.updateCellSelection?.();
             }
           }
           try {
-            engine().command('table:border-one');
-          } catch(e) {
+            origBorderOneCmd?.execute?.(services || disp?.services, opts);
+          } catch (e) {
             console.warn(e);
           }
         }
       });
     }
+    wireMissingToolbarButtons();
     document.querySelectorAll('[data-cmd="insert:hyperlink"]').forEach(btn => {
+      btn.classList.remove('disabled');
       btn.onclick = (e) => {
         e.preventDefault(); e.stopPropagation();
         showHyperlinkModal();
       };
     });
     document.querySelectorAll('[data-cmd="format:bullet-shape"]').forEach(btn => {
+      btn.classList.remove('disabled');
       btn.onclick = (e) => {
         e.preventDefault(); e.stopPropagation();
         showBulletShapeModal();
@@ -1175,24 +1332,24 @@
     } else if ((command && event.altKey && !event.shiftKey && (event.code === 'KeyM' || event.key.toLowerCase() === 'm' || event.key === 'ㅡ')) || (event.altKey && !event.shiftKey && !event.ctrlKey && !event.metaKey && (event.code === 'KeyE' || event.key.toLowerCase() === 'e' || event.key === 'ㄷ'))) {
       event.preventDefault(); event.stopPropagation();
       if (!loaded) return;
-      try { engine().command('insert:equation'); } catch (err) { console.warn('수식 편집기 실패:', err); }
+      try { runEquationCommand(); } catch (err) { console.warn('수식 편집기 실패:', err); }
     } else if (command && event.shiftKey && !event.altKey && (event.code === 'KeyS' || event.key.toLowerCase() === 's' || event.key === 'ㄴ')) {
       const ih = engine()?.getInputHandler?.();
       if (ih?.cursor?.isInCellSelectionMode?.()) {
         event.preventDefault(); event.stopPropagation();
-        try { engine().command('table:block-sum'); } catch (err) { console.warn('블록 합계 실패:', err); }
+        try { runBlockFormulaCommand('table:block-sum', '블록 합계'); } catch (err) { console.warn('블록 합계 실패:', err); }
       }
     } else if (command && event.shiftKey && !event.altKey && (event.code === 'KeyA' || event.key.toLowerCase() === 'a' || event.key === 'ㅁ')) {
       const ih = engine()?.getInputHandler?.();
       if (ih?.cursor?.isInCellSelectionMode?.() || ih?.cursor?.isInCell?.()) {
         event.preventDefault(); event.stopPropagation();
-        try { engine().command('table:block-avg'); } catch (err) { console.warn('블록 평균 실패:', err); }
+        try { runBlockFormulaCommand('table:block-avg', '블록 평균'); } catch (err) { console.warn('블록 평균 실패:', err); }
       }
     } else if (command && event.shiftKey && !event.altKey && (event.code === 'KeyP' || event.key.toLowerCase() === 'p' || event.key === 'ㅔ')) {
       const ih = engine()?.getInputHandler?.();
       if (ih?.cursor?.isInCellSelectionMode?.() || ih?.cursor?.isInCell?.()) {
         event.preventDefault(); event.stopPropagation();
-        try { engine().command('table:block-product'); } catch (err) { console.warn('블록 곱 실패:', err); }
+        try { runBlockFormulaCommand('table:block-product', '블록 곱'); } catch (err) { console.warn('블록 곱 실패:', err); }
       }
     } else if (!event.ctrlKey && !event.metaKey && !event.altKey && (event.code === 'KeyA' || event.key.toLowerCase() === 'a' || event.key === 'ㅁ')) {
       // [중요] 단일 문자 표 단축키(A, W, H, M, S)는 오직 수동 F5 셀 선택 모드에서만 작동! (일반 텍스트 타이핑 및 보호된 셀 모드 침범 금지)
@@ -1206,28 +1363,28 @@
       const ih = engine()?.getInputHandler?.();
       if (ih?.cursor?.isInCellSelectionMode?.() && !ih?.cursor?.isProtectedCellSelectionMode?.()) {
         event.preventDefault(); event.stopImmediatePropagation();
-        try { engine().command('table:cell-width-equal'); notice('열 너비 균등화 완료 (W)'); } catch (err) { console.warn(err); }
+        try { if (engine().command('table:cell-width-equal')) notice('열 너비 균등화 완료 (W)'); } catch (err) { console.warn(err); }
         updateTableHudState();
       }
     } else if (!event.ctrlKey && !event.metaKey && !event.altKey && (event.code === 'KeyH' || event.key.toLowerCase() === 'h' || event.key === 'ㅗ')) {
       const ih = engine()?.getInputHandler?.();
       if (ih?.cursor?.isInCellSelectionMode?.() && !ih?.cursor?.isProtectedCellSelectionMode?.()) {
         event.preventDefault(); event.stopImmediatePropagation();
-        try { engine().command('table:cell-height-equal'); notice('행 높이 균등화 완료 (H)'); } catch (err) { console.warn(err); }
+        try { if (engine().command('table:cell-height-equal')) notice('행 높이 균등화 완료 (H)'); } catch (err) { console.warn(err); }
         updateTableHudState();
       }
     } else if (!event.ctrlKey && !event.metaKey && !event.altKey && (event.code === 'KeyM' || event.key.toLowerCase() === 'm' || event.key === 'ㅡ')) {
       const ih = engine()?.getInputHandler?.();
       if (ih?.cursor?.isInCellSelectionMode?.() && !ih?.cursor?.isProtectedCellSelectionMode?.()) {
         event.preventDefault(); event.stopImmediatePropagation();
-        try { engine().command('table:cell-merge'); notice('선택된 셀 합치기 완료 (M)'); } catch (err) { console.warn(err); }
+        try { runCellMergeCommand(); } catch (err) { console.warn(err); }
         updateTableHudState();
       }
     } else if (!event.ctrlKey && !event.metaKey && !event.altKey && (event.code === 'KeyS' || event.key.toLowerCase() === 's' || event.key === 'ㄴ')) {
       const ih = engine()?.getInputHandler?.();
       if (ih?.cursor?.isInCellSelectionMode?.() && !ih?.cursor?.isProtectedCellSelectionMode?.()) {
         event.preventDefault(); event.stopImmediatePropagation();
-        try { engine().command('table:cell-split'); notice('셀 나누기 (S)'); } catch (err) { console.warn(err); }
+        try { engine().command('table:cell-split'); } catch (err) { console.warn(err); }
         updateTableHudState();
       }
     } else if (!event.ctrlKey && !event.metaKey && !event.altKey && (event.code === 'KeyP' || event.key.toLowerCase() === 'p' || event.key === 'ㅔ')) {
@@ -1247,7 +1404,7 @@
       const ih = engine()?.getInputHandler?.();
       if (ih?.cursor?.isInCellSelectionMode?.() && !ih?.cursor?.isProtectedCellSelectionMode?.()) {
         event.preventDefault(); event.stopImmediatePropagation();
-        try { engine().command('table:cell-clear-content'); notice('선택된 셀 내용 지움'); } catch (e) {}
+        try { clearSelectedCellsContent(); } catch (e) { console.warn(e); }
         updateTableHudState();
       }
     }
@@ -1618,15 +1775,15 @@
               } else if (params.action === 'deleteCol') {
                 try { engine().command('table:delete-col'); } catch (e) { console.warn(e); }
               } else if (params.action === 'merge') {
-                try { engine().command('table:cell-merge'); } catch (e) { console.warn(e); }
+                try { runCellMergeCommand(); } catch (e) { console.warn(e); }
               } else if (params.action === 'split') {
                 try { engine().command('table:cell-split'); } catch (e) { console.warn(e); }
               } else if (params.action === 'autoFill') {
                 performTableAutoFill();
               } else if (params.action === 'blockSum') {
-                try { engine().command('table:block-sum'); } catch (e) { console.warn(e); }
+                try { runBlockFormulaCommand('table:block-sum', '블록 합계'); } catch (e) { console.warn(e); }
               } else if (params.action === 'blockAvg') {
-                try { engine().command('table:block-avg'); } catch (e) { console.warn(e); }
+                try { runBlockFormulaCommand('table:block-avg', '블록 평균'); } catch (e) { console.warn(e); }
               } else if (params.action === 'formula') {
                 try { engine().command('table:formula'); } catch (e) { console.warn(e); }
               } else if (params.action === 'equalWidth') {
@@ -1714,7 +1871,7 @@
           try { engine().command('format:para-shape'); } catch (e) { console.warn(e); }
           result = {}; break;
         case 'equation':
-          try { engine().command('insert:equation'); } catch (e) { console.warn(e); }
+          try { runEquationCommand(); } catch (e) { console.warn(e); }
           result = {}; break;
         case 'symbols':
           try { engine().command('insert:symbols'); } catch (e) { console.warn(e); }
@@ -1801,12 +1958,13 @@
         showBulletShapeModal();
       });
       document.getElementById('hanul-btn-equation')?.addEventListener('click', () => {
-        try { engine().command('insert:equation'); } catch (e) { console.warn(e); }
+        try { runEquationCommand(); } catch (e) { console.warn(e); }
       });
       document.getElementById('hanul-btn-symbols')?.addEventListener('click', () => {
         try { engine().command('insert:symbols'); } catch (e) { console.warn(e); }
       });
     }
+    wireMissingToolbarButtons();
 
     // 2. 컨텍스트 플로팅 글래스 캡슐 HUD (#hanul-table-bar) 생성
     let hud = document.getElementById('hanul-table-bar');
@@ -1891,10 +2049,10 @@
       document.getElementById('hanul-btn-h-dec')?.addEventListener('click', () => resizeActiveTable(0, -10));
       document.getElementById('hanul-btn-h-inc')?.addEventListener('click', () => resizeActiveTable(0, 10));
       document.getElementById('hanul-btn-w-equal')?.addEventListener('click', () => {
-        try { engine().command('table:cell-width-equal'); notice('열 너비 균등화 완료 (W)'); } catch (e) { console.warn(e); }
+        try { if (engine().command('table:cell-width-equal')) notice('열 너비 균등화 완료 (W)'); } catch (e) { console.warn(e); }
       });
       document.getElementById('hanul-btn-h-equal')?.addEventListener('click', () => {
-        try { engine().command('table:cell-height-equal'); notice('행 높이 균등화 완료 (H)'); } catch (e) { console.warn(e); }
+        try { if (engine().command('table:cell-height-equal')) notice('행 높이 균등화 완료 (H)'); } catch (e) { console.warn(e); }
       });
       document.getElementById('hanul-btn-row-add')?.addEventListener('click', () => {
         try { engine().command('table:insert-row-below'); } catch (e) { console.warn(e); }
@@ -1909,17 +2067,17 @@
         try { engine().command('table:delete-col'); } catch (e) { console.warn(e); }
       });
       document.getElementById('hanul-btn-merge')?.addEventListener('click', () => {
-        try { engine().command('table:cell-merge'); notice('선택된 셀 합치기 완료 (M)'); } catch (e) { console.warn(e); }
+        try { runCellMergeCommand(); } catch (e) { console.warn(e); }
       });
       document.getElementById('hanul-btn-split')?.addEventListener('click', () => {
         try { engine().command('table:cell-split'); } catch (e) { console.warn(e); }
       });
       document.getElementById('hanul-btn-auto-fill')?.addEventListener('click', () => performTableAutoFill());
       document.getElementById('hanul-btn-block-sum')?.addEventListener('click', () => {
-        try { engine().command('table:block-sum'); } catch (e) { console.warn(e); }
+        try { runBlockFormulaCommand('table:block-sum', '블록 합계'); } catch (e) { console.warn(e); }
       });
       document.getElementById('hanul-btn-block-avg')?.addEventListener('click', () => {
-        try { engine().command('table:block-avg'); } catch (e) { console.warn(e); }
+        try { runBlockFormulaCommand('table:block-avg', '블록 평균'); } catch (e) { console.warn(e); }
       });
       document.getElementById('hanul-btn-formula')?.addEventListener('click', () => {
         try { engine().command('table:formula'); } catch (e) { console.warn(e); }

@@ -1,7 +1,7 @@
 # 한울(Hanul) · 한컴 표준 UI/기능 명세 및 추적 관리 매트릭스 (Specification & Tracking Matrix)
 
-> **문서 버전**: v1.2.0  
-> **기준 일자**: 2026년 11월 2일  
+> **문서 버전**: v1.3.0  
+> **기준 일자**: 2026년 11월 4일 (한컴 전 기능 런타임 바인딩 · 반응형 UI/UX · 다크/라이트 WCAG 고대비 전수 감사 반영)  
 > **조사 대상**: 한컴오피스 한글 2024 / KS X 6101 표준 규격 (총 142개 기능 항목) vs 한울(Hanul) v0.1.0 런타임  
 > **관리 목적**: 한컴오피스의 모든 UI와 기능을 명확히 정의하고, 구현된 것과 미구현/결함 상태를 지표화하여 지속적인 개발/QA 파이프라인에서 추적·관리합니다.  
 > **특화 심층 감사 보고서**: [서명·도장 '글 뒤로' 및 15종 모달 전수 정밀 감사 보고서](./SIGNATURE_AND_MODAL_RIGOROUS_AUDIT.md)
@@ -302,3 +302,18 @@ gantt
    - 모든 수정 사항은 `npm test`를 통해 17대 MCP 도구, 12대 실무 공문서 fixtures, 서명(글 뒤로) 무손실 테스트를 100% 통과해야만 릴리즈될 수 있습니다.
 3. **사용자 제보 결함의 지표 반영**:
    - 사용자가 새로운 결함을 제보하면 즉시 본 매트릭스의 '결함 추적' 테이블에 이슈를 등록하고 번호를 부여하여 해결 과정을 투명하게 공개합니다.
+
+---
+
+## 🛡️ 5. 2026-11-04 전수 실측 감사(Ground-Truth Audit) 해결 내역
+
+- **명령 레지스트리 및 죽은 버튼 제로화 (`127/127` 명령 검증)**:
+  - [`media/engine-adapter.js`](../media/engine-adapter.js) `getRegistry()` 노출 및 [`media/host.js`](../media/host.js) `setupDispatcherOverrides()`를 `CommandRegistry`(`bA`) 직결로 수정하여 `insert:hyperlink`, `format:bullet-shape`, `table:cell-clear-content`, `file:open`, `file:save` 등록 누락 및 `table:border-one` 재귀 위험 완전 해소.
+  - `#icon-toolbar` 내 `data-cmd` 미지정 버튼 4종(`오려두기`, `복사하기`, `붙이기`, `하이퍼링크`) 실동작 연결(`wireMissingToolbarButtons`).
+  - `F5` 셀 선택 후 `Delete`/`Backspace` 시 WASM `deleteTextInCell` 기반 셀 내용 일괄 삭제 및 `Cmd+Z` Undo 복원 구현(`clearSelectedCellsContent`).
+  - 표 셀 내부 수식 삽입 제한 안내, 단일 셀 상태에서 합치기(`M`)·블록 계산식 호출 시 허위 완료 토스트 차단 및 정직한 가이드 토스트 제공.
+- **유령 컨텍스트 툴바 제거 및 반응형 레이아웃 (`1200x800` / `1440x960`)**:
+  - [`media/host.css`](../media/host.css)에서 `[hidden]` 속성이 무시되어 상시 노출되던 회전·머리말/꼬리말·각주 유령 그룹 원천 차단(`ghostWidth = 0`).
+  - `1200x800` 해상도에서도 상단 `저장`·`다른 이름으로 저장` 버튼 및 하단 플로팅 표 HUD 19개 컨트롤이 잘림 없이 1줄에 수납되도록 반응형 설계 적용.
+- **다크/라이트 양방향 WCAG 명도 대비(`>= 4.5:1`) 결함 0건 달성**:
+  - 메인 크롬, 메뉴 드롭다운, 표 HUD, 10대 핵심 대화상자(`F7` 편집용지, `Alt+L` 글자모양 `.cs-preview`/외곽선 아이콘, `Alt+T` 문단모양, `F6` 스타일, 찾아바꾸기, 문자표, 표/셀 속성 활성 토글, 하이퍼링크, 글머리표, 수식 편집기) 및 `<select>` 한글 받침 높이까지 전수 실측 통과.
