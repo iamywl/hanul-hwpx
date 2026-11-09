@@ -215,18 +215,39 @@ export function parseHwpBuffer(buffer: Buffer): ParsedHwpDocument {
     const paragraphs: string[] = [];
     const tables: ParsedTable[] = [];
 
-    // 중첩 표를 지원하기 위한 테이블 스택
+    // 중첩 표 및 최상위 표 종료 감지를 지원하는 테이블 스택 (GAP-HWPX-06)
     interface TableContext {
       table: ParsedTable;
+      tableLevel: number;
       cellRow: number;
       cellCol: number;
       cellsParsed: number;
       totalCells: number;
+      currentCellHasPara: boolean;
     }
     const tableStack: TableContext[] = [];
 
     for (let r = 0; r < records.length; r++) {
       const rec = records[r];
+
+      // 레코드 트리 레벨이 현재 표의 TABLE 레코드 레벨보다 작아지면 최상위/중첩 표 범위를 벗어난 것이므로 스택에서 팝
+      while (tableStack.length > 0 && rec.level < tableStack[tableStack.length - 1].tableLevel) {
+        tableStack.pop();
+      }
+      // 합성 평면 레코드(level=0)에서 모든 셀 순회 완료 후 다음 문단 진입 시 팝
+      while (
+        tableStack.length > 0 &&
+        tableStack[tableStack.length - 1].tableLevel === 0 &&
+        rec.tagId === HWP_TAG.PARA_HEADER &&
+        tableStack[tableStack.length - 1].cellsParsed >= tableStack[tableStack.length - 1].totalCells &&
+        tableStack[tableStack.length - 1].currentCellHasPara
+      ) {
+        tableStack.pop();
+      }
+
+      if (rec.tagId === HWP_TAG.PARA_HEADER && tableStack.length > 0) {
+        tableStack[tableStack.length - 1].currentCellHasPara = true;
+      }
 
       // 문단 텍스트 (PARA_TEXT = 67)
       if (rec.tagId === HWP_TAG.PARA_TEXT) {
@@ -265,10 +286,12 @@ export function parseHwpBuffer(buffer: Buffer): ParsedHwpDocument {
           tables.push(newTable);
           tableStack.push({
             table: newTable,
+            tableLevel: rec.level,
             cellRow: 0,
             cellCol: 0,
             cellsParsed: 0,
             totalCells: rows * cols,
+            currentCellHasPara: false,
           });
         }
       }
@@ -287,6 +310,7 @@ export function parseHwpBuffer(buffer: Buffer): ParsedHwpDocument {
           ctx.cellRow = rowIdx;
           ctx.cellCol = colIdx;
           ctx.cellsParsed++;
+          ctx.currentCellHasPara = false;
           if (colSpan > 1 || rowSpan > 1) {
             ctx.table.hasMergedCells = true;
           }
@@ -299,9 +323,6 @@ export function parseHwpBuffer(buffer: Buffer): ParsedHwpDocument {
             height,
             text: '',
           });
-        }
-        if (ctx.cellsParsed >= ctx.totalCells && tableStack.length > 1) {
-          tableStack.pop();
         }
       }
     }

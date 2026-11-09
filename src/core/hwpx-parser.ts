@@ -32,13 +32,13 @@ export interface ParsedHwpxDocument {
 }
 
 /**
- * 특정 노드가 표 셀(hp:tc 또는 hp:subList) 내부에 위치해 있는지 검사
+ * 특정 노드가 표(hp:tbl) 또는 표 셀(hp:tc) 내부에 위치해 있는지 검사
  */
 function isInsideTableCell(node: any): boolean {
   let curr = node ? node.parentNode : null;
   while (curr) {
     const name: string = curr.localName || curr.nodeName || '';
-    if (name.includes('tc') || name.includes('subList')) {
+    if (name === 'hp:tc' || name === 'tc' || name === 'hp:tbl' || name === 'tbl') {
       return true;
     }
     curr = curr.parentNode;
@@ -48,12 +48,16 @@ function isInsideTableCell(node: any): boolean {
 
 /**
  * DOM 노드 하위의 모든 <hp:t> 텍스트를 순서대로 추출
+ * skipTables가 true이면 하위 <hp:tbl> 내부 텍스트는 건너뜁니다.
  */
-function extractTextFromNode(node: any): string {
+function extractTextFromNode(node: any, skipTables = false): string {
   const texts: string[] = [];
   function walk(n: any) {
     if (!n) return;
     const name: string = n.localName || n.nodeName || '';
+    if (skipTables && (name === 'hp:tbl' || name === 'tbl')) {
+      return;
+    }
     if (name === 'hp:t' || name === 't') {
       const val = n.textContent || '';
       if (val) texts.push(val);
@@ -219,11 +223,14 @@ export function parseHwpxBuffer(buffer: Buffer): ParsedHwpxDocument {
       }
     }
 
-    // 2. 문단 (<hp:p>) 추출: 본문 및 표 셀을 포함한 전체 문서 문단 수집
+    // 2. 문단 (<hp:p>) 추출: 표 셀(<hp:tbl>/<hp:tc>) 내부 문단이 본문 paragraphs에 중복 수집되지 않도록 차단 (GAP-HWPX-05)
     const pElements = doc.getElementsByTagName('hp:p');
     for (let p = 0; p < pElements.length; p++) {
       const pEl = pElements.item(p);
-      const text = extractTextFromNode(pEl);
+      if (!pEl || isInsideTableCell(pEl)) {
+        continue;
+      }
+      const text = extractTextFromNode(pEl, true);
       if (text.length > 0) {
         paragraphs.push(text);
       }
@@ -245,7 +252,7 @@ export function parseHwpxBuffer(buffer: Buffer): ParsedHwpxDocument {
       const treatAsChar = posEl ? posEl.getAttribute('treatAsChar') === '1' : false;
       const allowOverlap = posEl ? posEl.getAttribute('allowOverlap') === '1' : false;
 
-      const szEl = picEl.getElementsByTagName('hp:sz')?.item(0);
+      const szEl = picEl.getElementsByTagName('hp:sz')?.item(0) || picEl.getElementsByTagName('hp:curSz')?.item(0);
       const width = szEl ? parseInt(szEl.getAttribute('width') || '0', 10) : 0;
       const height = szEl ? parseInt(szEl.getAttribute('height') || '0', 10) : 0;
 
@@ -268,7 +275,16 @@ export function parseHwpxBuffer(buffer: Buffer): ParsedHwpxDocument {
       });
     }
 
-    const sectionText = paragraphs.join('\n\n');
+    const sectionBlocks: string[] = [...paragraphs];
+    for (const tbl of tables) {
+      const rowLines = tbl.cells
+        .map((row) => row.filter((cell) => cell && cell.trim().length > 0).join(' '))
+        .filter((line) => line.length > 0);
+      if (rowLines.length > 0) {
+        sectionBlocks.push(rowLines.join('\n'));
+      }
+    }
+    const sectionText = sectionBlocks.join('\n\n');
     fullText += (fullText ? '\n\n---\n\n' : '') + sectionText;
 
     sections.push({

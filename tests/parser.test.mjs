@@ -40,7 +40,7 @@ test('HWPX 표준 문서 (fsc_fund_report.hwpx) 파싱 및 마크다운 변환 �
 
   assert.equal(doc.format, 'hwpx');
   assert.equal(doc.version, 'KS X 6101 HWPX');
-  assert.ok(doc.paragraphs.length >= 50, '문단이 파싱되어야 합니다.');
+  assert.ok(doc.paragraphs.length >= 10, '표 셀 중복 없이 본문 문단이 파싱되어야 합니다.');
   assert.ok(doc.tables.length >= 5, '표가 파싱되어야 합니다.');
   assert.ok(doc.fullText.includes('국민성장펀드'), '본문 키워드가 포함되어야 합니다.');
 

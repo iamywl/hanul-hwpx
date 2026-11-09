@@ -7,11 +7,12 @@
 import * as readline from 'node:readline';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { unzipSync, zipSync, strToU8, strFromU8 } from 'fflate';
+import { unzipSync, zipSync, strToU8, strFromU8, Zippable } from 'fflate';
 import { DOMParser, XMLSerializer } from '@xmldom/xmldom';
 import { openDocument, parseDocumentBuffer } from '../core/document.js';
 import { CompoundFile } from '../core/cfbf.js';
-import { parseFileHeader } from '../core/hwp-record.js';
+import { parseFileHeader, decompressStream, parseRecords, HWP_TAG } from '../core/hwp-record.js';
+import { decryptViewTextStream, cleanParaText } from '../core/hwp-parser.js';
 import { validateBytes } from '../storage.js';
 import { HwpxDocumentBuilder, TableDef } from '../core/hwpx-builder.js';
 import { compileMarkdownToHwpx } from '../core/markdown-compiler.js';
@@ -44,7 +45,7 @@ function escapeXml(unsafe: string): string {
     .replace(/'/g, '&apos;');
 }
 
-function detectImageMime(buf: Buffer): string {
+function detectImageMime(buf: Buffer, extHint?: string): string {
   if (buf.length >= 8 && buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) {
     return 'image/png';
   }
@@ -57,7 +58,126 @@ function detectImageMime(buf: Buffer): string {
   if (buf.length >= 6 && (buf.subarray(0, 6).toString() === 'GIF89a' || buf.subarray(0, 6).toString() === 'GIF87a')) {
     return 'image/gif';
   }
+  const cleanExt = (extHint || '').toLowerCase().replace(/^\./, '');
+  if (cleanExt === 'png') return 'image/png';
+  if (cleanExt === 'jpg' || cleanExt === 'jpeg') return 'image/jpeg';
+  if (cleanExt === 'bmp') return 'image/bmp';
+  if (cleanExt === 'gif') return 'image/gif';
+  if (cleanExt === 'svg') return 'image/svg+xml';
   return 'application/octet-stream';
+}
+
+/**
+ * KS X 6101 규격에 맞게 mimetype을 무압축(level: 0) 첫 번째 엔트리로 유지하며 ZIP 아카이브 재패키징
+ */
+function packHwpxZip(zipData: Record<string, Uint8Array>): Uint8Array {
+  const zippable: Zippable = {};
+  if (zipData['mimetype']) {
+    zippable['mimetype'] = [zipData['mimetype'], { level: 0 }];
+  }
+  for (const [k, v] of Object.entries(zipData)) {
+    if (k === 'mimetype') continue;
+    zippable[k] = v;
+  }
+  return zipSync(zippable);
+}
+
+/**
+ * Contents/content.hpf 내 <opf:manifest>에 바이너리/차트 리소스 아이템을 중복 없이 등록
+ */
+function registerManifestItem(
+  zipData: Record<string, Uint8Array>,
+  item: { id: string; href: string; mediaType: string; isEmbedded?: string }
+): void {
+  const hpfKey = Object.keys(zipData).find((k) => /^Contents\/content\.hpf$/i.test(k)) || 'Contents/content.hpf';
+  if (!zipData[hpfKey]) return;
+
+  const parser = new DOMParser();
+  const hpfDoc = parser.parseFromString(strFromU8(zipData[hpfKey]), 'text/xml');
+  const manifestList = hpfDoc.getElementsByTagName('opf:manifest');
+  const manifest =
+    manifestList.length > 0 ? manifestList.item(0)! : hpfDoc.getElementsByTagName('manifest').item(0);
+  if (!manifest) return;
+
+  const existingItems = Array.from(manifest.getElementsByTagName('opf:item')).concat(
+    Array.from(manifest.getElementsByTagName('item'))
+  );
+  let targetItem = existingItems.find(
+    (el: any) => el.getAttribute('id') === item.id || el.getAttribute('href') === item.href
+  );
+  if (!targetItem) {
+    targetItem = hpfDoc.createElement('opf:item');
+    manifest.appendChild(targetItem);
+  }
+  targetItem.setAttribute('id', item.id);
+  targetItem.setAttribute('href', item.href);
+  targetItem.setAttribute('media-type', item.mediaType);
+  targetItem.setAttribute('isEmbeded', item.isEmbedded ?? '1');
+
+  const serializer = new XMLSerializer();
+  zipData[hpfKey] = strToU8(serializer.serializeToString(hpfDoc));
+}
+
+/**
+ * <hp:fieldBegin>과 매칭되는 <hp:fieldEnd> 사이에 위치한 <hp:t> 노드들만 문서 순서대로 정확히 수집 (GAP-HWPX-04)
+ */
+function collectFieldTextRange(scopeRoot: any, beginNode: any): { tNodes: any[]; endNode: any | null } {
+  const tNodes: any[] = [];
+  let endNode: any | null = null;
+  let started = false;
+  let stopped = false;
+  let depth = 0;
+  const beginId: string = beginNode.getAttribute?.('id') || beginNode.getAttribute?.('hp:id') || '';
+
+  function walk(node: any) {
+    if (!node || stopped) return;
+    if (node === beginNode) {
+      started = true;
+      depth = 1;
+      // fieldBegin 하위의 <hp:parameters> 내부는 본문 표시 텍스트가 아니므로 진입하지 않음
+      return;
+    }
+
+    if (started && node.nodeType === 1) {
+      const name: string = node.localName || node.nodeName || '';
+      if (name === 'hp:fieldBegin' || name === 'fieldBegin') {
+        depth += 1;
+        return;
+      }
+      if (name === 'hp:fieldEnd' || name === 'fieldEnd') {
+        const endRef: string = node.getAttribute?.('beginIDRef') || node.getAttribute?.('hp:beginIDRef') || '';
+        if (beginId && endRef) {
+          if (endRef === beginId) {
+            endNode = node;
+            stopped = true;
+            return;
+          }
+        } else {
+          depth -= 1;
+          if (depth <= 0) {
+            endNode = node;
+            stopped = true;
+            return;
+          }
+        }
+        return;
+      }
+      if (name === 'hp:t' || name === 't') {
+        tNodes.push(node);
+        return;
+      }
+    }
+
+    if (node.childNodes) {
+      for (let i = 0; i < node.childNodes.length; i++) {
+        walk(node.childNodes[i]);
+        if (stopped) return;
+      }
+    }
+  }
+
+  walk(scopeRoot);
+  return { tNodes, endNode };
 }
 
 const TOOLS = [
@@ -707,14 +827,20 @@ export class HanulMcpServer {
         }> = [];
 
         if (buf.length >= 8 && buf[0] === 0xd0 && buf[1] === 0xcf && buf[2] === 0x11 && buf[3] === 0xe0) {
-          // HWP 바이너리 BinData 스트림 추출
+          // HWP 바이너리 BinData 스트림 추출 (GAP-HWPX-06: 압축 플래그 시 decompressStream 복원)
           const cfb = new CompoundFile(buf);
+          const headerStream = cfb.getStream('FileHeader');
+          const isCompressed = headerStream ? parseFileHeader(headerStream).flags.compressed : false;
           const entries = cfb.listEntries().filter((e) => e.path.toLowerCase().startsWith('bindata/'));
           for (const entry of entries) {
-            const stream = cfb.getStream(entry);
-            if (!stream) continue;
-            const mimeType = detectImageMime(stream);
+            const rawStream = cfb.getStream(entry);
+            if (!rawStream) continue;
+            let stream: Buffer = rawStream;
+            if (isCompressed && detectImageMime(stream) === 'application/octet-stream') {
+              stream = Buffer.from(decompressStream(stream));
+            }
             let ext = path.extname(entry.name);
+            const mimeType = detectImageMime(stream, ext);
             if (!ext) {
               ext = mimeType === 'image/png' ? '.png' : mimeType === 'image/jpeg' ? '.jpg' : '.bmp';
             }
@@ -1008,20 +1134,54 @@ export class HanulMcpServer {
         let totalReplaced = 0;
         const escaped = findText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const regex = new RegExp(escaped, matchCase ? 'g' : 'gi');
+        const parser = new DOMParser();
+        const serializer = new XMLSerializer();
 
         for (const [entryName, u8] of Object.entries(zipData)) {
           if (entryName.startsWith('Contents/section') && entryName.endsWith('.xml')) {
-            let xml = strFromU8(u8);
-            const matches = xml.match(regex);
-            if (matches && matches.length > 0) {
-              totalReplaced += matches.length;
-              xml = xml.replace(regex, replaceText);
-              zipData[entryName] = strToU8(xml);
+            const xml = strFromU8(u8);
+            const doc = parser.parseFromString(xml, 'text/xml');
+            let sectionReplaced = 0;
+
+            // GAP-HWPX-03: raw XML 정규식 치환을 금지하고 DOM 내 <hp:t> 텍스트 노드만 안전하게 변경
+            const walkForTextElements = (node: any) => {
+              if (!node) return;
+              if (node.nodeType === 1) {
+                const tagName: string = node.localName || node.nodeName || '';
+                if (tagName === 'hp:t' || tagName === 't') {
+                  if (node.childNodes) {
+                    for (let i = 0; i < node.childNodes.length; i++) {
+                      const child = node.childNodes[i];
+                      if (child && child.nodeType === 3) {
+                        const origVal: string = child.nodeValue || '';
+                        regex.lastIndex = 0;
+                        const matches = origVal.match(regex);
+                        if (matches && matches.length > 0) {
+                          sectionReplaced += matches.length;
+                          totalReplaced += matches.length;
+                          child.nodeValue = origVal.replace(regex, () => replaceText);
+                        }
+                      }
+                    }
+                  }
+                  return;
+                }
+              }
+              if (node.childNodes) {
+                for (let i = 0; i < node.childNodes.length; i++) {
+                  walkForTextElements(node.childNodes[i]);
+                }
+              }
+            };
+
+            walkForTextElements(doc.documentElement);
+            if (sectionReplaced > 0) {
+              zipData[entryName] = strToU8(serializer.serializeToString(doc));
             }
           }
         }
 
-        const outZip = zipSync(zipData);
+        const outZip = packHwpxZip(zipData);
         fs.writeFileSync(outPath, Buffer.from(outZip));
         const stats = fs.statSync(outPath);
 
@@ -1158,9 +1318,19 @@ export class HanulMcpServer {
         const zipData = unzipSync(new Uint8Array(buf));
 
         const ext = path.extname(imagePath).toLowerCase().replace('.', '') || 'png';
-        const imgBinaryId = `image_${Date.now()}`;
+        const mimeType = detectImageMime(imgBuf, ext);
+        const existingBinCount = Object.keys(zipData).filter((k) => /^BinData\//i.test(k)).length;
+        const imgBinaryId = `image_${existingBinCount + 1}_${Date.now()}`;
         const binDataPath = `BinData/${imgBinaryId}.${ext}`;
         zipData[binDataPath] = new Uint8Array(imgBuf);
+
+        // GAP-HWPX-01: Contents/content.hpf 매니페스트에 <opf:item> 등록
+        registerManifestItem(zipData, {
+          id: imgBinaryId,
+          href: binDataPath,
+          mediaType: mimeType === 'application/octet-stream' ? 'image/png' : mimeType,
+          isEmbedded: '1',
+        });
 
         const secEntry = 'Contents/section0.xml';
         if (!zipData[secEntry]) {
@@ -1175,23 +1345,144 @@ export class HanulMcpServer {
           return this.sendError(id, -32602, '유효한 섹션 요소를 찾을 수 없습니다.');
         }
 
+        // GAP-HWPX-01: 표준 KS X 6101 <hp:pic> + <hp:orgSz/> + <hp:curSz/> + <hc:img binaryItemIDRef="..."/> 생성
+        const picNumId = String(Date.now() % 2000000000);
         const newP = doc.createElement('hp:p');
+        newP.setAttribute('id', picNumId);
+        newP.setAttribute('paraPrIDRef', '0');
+        newP.setAttribute('styleIDRef', '0');
+        newP.setAttribute('pageBreak', '0');
+        newP.setAttribute('columnBreak', '0');
+        newP.setAttribute('merged', '0');
+
         const newRun = doc.createElement('hp:run');
+        newRun.setAttribute('charPrIDRef', '0');
+
         const newPic = doc.createElement('hp:pic');
-        newPic.setAttribute('id', String(Date.now()));
+        newPic.setAttribute('id', picNumId);
         newPic.setAttribute('zOrder', behindText ? '-1' : '0');
-        newPic.setAttribute('textWrap', behindText ? 'behindText' : 'inLineWithText');
-        newPic.setAttribute('width', String(widthHwpu));
-        newPic.setAttribute('height', String(heightHwpu));
+        newPic.setAttribute('numberingType', 'PICTURE');
+        newPic.setAttribute('textWrap', behindText ? 'BEHIND_TEXT' : 'TOP_AND_BOTTOM');
+        newPic.setAttribute('textFlow', 'BOTH_SIDES');
+        newPic.setAttribute('lock', '0');
+        newPic.setAttribute('dropcapstyle', 'None');
+        newPic.setAttribute('href', '');
+        newPic.setAttribute('groupLevel', '0');
+        newPic.setAttribute('instid', picNumId);
+        newPic.setAttribute('reverse', '0');
+
+        const offsetElem = doc.createElement('hp:offset');
+        offsetElem.setAttribute('x', '0');
+        offsetElem.setAttribute('y', '0');
+        newPic.appendChild(offsetElem);
+
+        const orgSzElem = doc.createElement('hp:orgSz');
+        orgSzElem.setAttribute('width', String(widthHwpu));
+        orgSzElem.setAttribute('height', String(heightHwpu));
+        newPic.appendChild(orgSzElem);
+
+        const curSzElem = doc.createElement('hp:curSz');
+        curSzElem.setAttribute('width', String(widthHwpu));
+        curSzElem.setAttribute('height', String(heightHwpu));
+        newPic.appendChild(curSzElem);
+
+        const flipElem = doc.createElement('hp:flip');
+        flipElem.setAttribute('horizontal', '0');
+        flipElem.setAttribute('vertical', '0');
+        newPic.appendChild(flipElem);
+
+        const rotElem = doc.createElement('hp:rotationInfo');
+        rotElem.setAttribute('angle', '0');
+        rotElem.setAttribute('centerX', String(Math.floor(widthHwpu / 2)));
+        rotElem.setAttribute('centerY', String(Math.floor(heightHwpu / 2)));
+        rotElem.setAttribute('rotateimage', '1');
+        newPic.appendChild(rotElem);
+
+        const renderInfoElem = doc.createElement('hp:renderingInfo');
+        for (const matTag of ['hc:transMatrix', 'hc:scaMatrix', 'hc:rotMatrix']) {
+          const mat = doc.createElement(matTag);
+          mat.setAttribute('e1', '1');
+          mat.setAttribute('e2', '0');
+          mat.setAttribute('e3', '0');
+          mat.setAttribute('e4', '0');
+          mat.setAttribute('e5', '1');
+          mat.setAttribute('e6', '0');
+          renderInfoElem.appendChild(mat);
+        }
+        newPic.appendChild(renderInfoElem);
+
+        const imgRectElem = doc.createElement('hp:imgRect');
+        const pts: Array<[string, number, number]> = [
+          ['hc:pt0', 0, 0],
+          ['hc:pt1', widthHwpu, 0],
+          ['hc:pt2', widthHwpu, heightHwpu],
+          ['hc:pt3', 0, heightHwpu],
+        ];
+        for (const [ptTag, px, py] of pts) {
+          const pt = doc.createElement(ptTag);
+          pt.setAttribute('x', String(px));
+          pt.setAttribute('y', String(py));
+          imgRectElem.appendChild(pt);
+        }
+        newPic.appendChild(imgRectElem);
+
+        const imgClipElem = doc.createElement('hp:imgClip');
+        imgClipElem.setAttribute('left', '0');
+        imgClipElem.setAttribute('right', String(widthHwpu));
+        imgClipElem.setAttribute('top', '0');
+        imgClipElem.setAttribute('bottom', String(heightHwpu));
+        newPic.appendChild(imgClipElem);
+
+        const inMarginElem = doc.createElement('hp:inMargin');
+        inMarginElem.setAttribute('left', '0');
+        inMarginElem.setAttribute('right', '0');
+        inMarginElem.setAttribute('top', '0');
+        inMarginElem.setAttribute('bottom', '0');
+        newPic.appendChild(inMarginElem);
+
+        const imgDimElem = doc.createElement('hp:imgDim');
+        imgDimElem.setAttribute('dimwidth', String(widthHwpu));
+        imgDimElem.setAttribute('dimheight', String(heightHwpu));
+        newPic.appendChild(imgDimElem);
+
+        const hcImgElem = doc.createElement('hc:img');
+        hcImgElem.setAttribute('binaryItemIDRef', imgBinaryId);
+        hcImgElem.setAttribute('bright', '0');
+        hcImgElem.setAttribute('contrast', '0');
+        hcImgElem.setAttribute('effect', 'REAL_PIC');
+        hcImgElem.setAttribute('alpha', '0');
+        newPic.appendChild(hcImgElem);
+
+        newPic.appendChild(doc.createElement('hp:effects'));
 
         const szElem = doc.createElement('hp:sz');
         szElem.setAttribute('width', String(widthHwpu));
+        szElem.setAttribute('widthRelTo', 'ABSOLUTE');
         szElem.setAttribute('height', String(heightHwpu));
+        szElem.setAttribute('heightRelTo', 'ABSOLUTE');
+        szElem.setAttribute('protect', '0');
         newPic.appendChild(szElem);
 
-        const imgElem = doc.createElement('hp:img');
-        imgElem.setAttribute('src', binDataPath);
-        newPic.appendChild(imgElem);
+        const posElem = doc.createElement('hp:pos');
+        posElem.setAttribute('treatAsChar', behindText ? '0' : '1');
+        posElem.setAttribute('affectLSpacing', '0');
+        posElem.setAttribute('flowWithText', '1');
+        posElem.setAttribute('allowOverlap', behindText ? '1' : '0');
+        posElem.setAttribute('holdAnchorAndSO', '0');
+        posElem.setAttribute('vertRelTo', 'PARA');
+        posElem.setAttribute('horzRelTo', 'PARA');
+        posElem.setAttribute('vertAlign', 'TOP');
+        posElem.setAttribute('horzAlign', behindText ? 'RIGHT' : 'CENTER');
+        posElem.setAttribute('vertOffset', '0');
+        posElem.setAttribute('horzOffset', '0');
+        newPic.appendChild(posElem);
+
+        const outMarginElem = doc.createElement('hp:outMargin');
+        outMarginElem.setAttribute('left', '0');
+        outMarginElem.setAttribute('right', '0');
+        outMarginElem.setAttribute('top', '0');
+        outMarginElem.setAttribute('bottom', '0');
+        newPic.appendChild(outMarginElem);
 
         newRun.appendChild(newPic);
         newP.appendChild(newRun);
@@ -1201,7 +1492,7 @@ export class HanulMcpServer {
         const newXml = serializer.serializeToString(doc);
         zipData[secEntry] = strToU8(newXml);
 
-        const outZip = zipSync(zipData);
+        const outZip = packHwpxZip(zipData);
         fs.writeFileSync(outPath, Buffer.from(outZip));
         const stats = fs.statSync(outPath);
 
@@ -1214,6 +1505,7 @@ export class HanulMcpServer {
           ],
           success: true,
           behindText,
+          binaryItemIDRef: imgBinaryId,
           binDataPath,
           outputPath: outPath,
           fileSize: stats.size,
@@ -1324,10 +1616,22 @@ export class HanulMcpServer {
           return this.sendError(id, -32602, '유효한 섹션 요소를 찾을 수 없습니다.');
         }
 
+        const headerXmlStr = zipData['Contents/header.xml'] ? strFromU8(zipData['Contents/header.xml']) : '';
+        const bodyBorderFillId = headerXmlStr.includes('id="3"') ? '3' : '1';
+        const headerBorderFillId = headerXmlStr.includes('id="4"') ? '4' : bodyBorderFillId;
+        let nextPId = doc.getElementsByTagName('hp:p').length + 100;
+
         // 1. 소제목 추가
         if (heading) {
           const headP = doc.createElement('hp:p');
+          headP.setAttribute('id', String(nextPId++));
+          headP.setAttribute('paraPrIDRef', '0');
+          headP.setAttribute('styleIDRef', '0');
+          headP.setAttribute('pageBreak', '0');
+          headP.setAttribute('columnBreak', '0');
+          headP.setAttribute('merged', '0');
           const run = doc.createElement('hp:run');
+          run.setAttribute('charPrIDRef', '0');
           const t = doc.createElement('hp:t');
           t.textContent = heading;
           run.appendChild(t);
@@ -1338,7 +1642,14 @@ export class HanulMcpServer {
         // 2. 문단 추가
         for (const pText of paragraphs) {
           const pElem = doc.createElement('hp:p');
+          pElem.setAttribute('id', String(nextPId++));
+          pElem.setAttribute('paraPrIDRef', '0');
+          pElem.setAttribute('styleIDRef', '0');
+          pElem.setAttribute('pageBreak', '0');
+          pElem.setAttribute('columnBreak', '0');
+          pElem.setAttribute('merged', '0');
           const run = doc.createElement('hp:run');
+          run.setAttribute('charPrIDRef', '0');
           const t = doc.createElement('hp:t');
           t.textContent = String(pText);
           run.appendChild(t);
@@ -1346,35 +1657,164 @@ export class HanulMcpServer {
           secElem.appendChild(pElem);
         }
 
-        // 3. 표 추가
+        // 3. 표 추가 (GAP-HWPX-02: <hs:sec> 직하위 삽입 금지, <hp:p><hp:run><hp:tbl> 래핑 및 필수 셀 메타데이터 완비)
         if (table && Array.isArray(table.rows) && table.rows.length > 0) {
-          const tblElem = doc.createElement('hp:tbl');
-          tblElem.setAttribute('id', String(Date.now()));
-          tblElem.setAttribute('zOrder', '0');
+          const rowCount = table.rows.length;
+          const colCount = Math.max(
+            1,
+            ...table.rows.map((r: unknown) => (Array.isArray(r) ? r.length : 0))
+          );
+          const totalWidth = 42520;
+          const baseColWidth = Math.floor(totalWidth / colCount);
+          const colWidths = Array(colCount).fill(baseColWidth);
+          colWidths[colCount - 1] += totalWidth - baseColWidth * colCount;
+          const rowHeight = 750;
+          const totalHeight = rowCount * rowHeight;
 
-          for (const rowData of table.rows) {
+          const tblWrapperP = doc.createElement('hp:p');
+          tblWrapperP.setAttribute('id', String(nextPId++));
+          tblWrapperP.setAttribute('paraPrIDRef', '0');
+          tblWrapperP.setAttribute('styleIDRef', '0');
+          tblWrapperP.setAttribute('pageBreak', '0');
+          tblWrapperP.setAttribute('columnBreak', '0');
+          tblWrapperP.setAttribute('merged', '0');
+
+          const tblWrapperRun = doc.createElement('hp:run');
+          tblWrapperRun.setAttribute('charPrIDRef', '0');
+
+          const tblElem = doc.createElement('hp:tbl');
+          tblElem.setAttribute('id', String(Date.now() % 2000000000));
+          tblElem.setAttribute('zOrder', '0');
+          tblElem.setAttribute('numberingType', 'TABLE');
+          tblElem.setAttribute('textWrap', 'TOP_AND_BOTTOM');
+          tblElem.setAttribute('textFlow', 'BOTH_SIDES');
+          tblElem.setAttribute('lock', '0');
+          tblElem.setAttribute('dropcapstyle', 'None');
+          tblElem.setAttribute('pageBreak', 'CELL');
+          tblElem.setAttribute('repeatHeader', '1');
+          tblElem.setAttribute('rowCnt', String(rowCount));
+          tblElem.setAttribute('colCnt', String(colCount));
+          tblElem.setAttribute('cellSpacing', '0');
+          tblElem.setAttribute('borderFillIDRef', bodyBorderFillId);
+          tblElem.setAttribute('noAdjust', '0');
+
+          const tblSz = doc.createElement('hp:sz');
+          tblSz.setAttribute('width', String(totalWidth));
+          tblSz.setAttribute('widthRelTo', 'ABSOLUTE');
+          tblSz.setAttribute('height', String(totalHeight));
+          tblSz.setAttribute('heightRelTo', 'ABSOLUTE');
+          tblSz.setAttribute('protect', '0');
+          tblElem.appendChild(tblSz);
+
+          const tblPos = doc.createElement('hp:pos');
+          tblPos.setAttribute('treatAsChar', '1');
+          tblPos.setAttribute('affectLSpacing', '0');
+          tblPos.setAttribute('flowWithText', '1');
+          tblPos.setAttribute('allowOverlap', '0');
+          tblPos.setAttribute('holdAnchorAndSO', '0');
+          tblPos.setAttribute('vertRelTo', 'PARA');
+          tblPos.setAttribute('horzRelTo', 'PARA');
+          tblPos.setAttribute('vertAlign', 'TOP');
+          tblPos.setAttribute('horzAlign', 'LEFT');
+          tblPos.setAttribute('vertOffset', '0');
+          tblPos.setAttribute('horzOffset', '0');
+          tblElem.appendChild(tblPos);
+
+          const outMargin = doc.createElement('hp:outMargin');
+          outMargin.setAttribute('left', '0');
+          outMargin.setAttribute('right', '0');
+          outMargin.setAttribute('top', '283');
+          outMargin.setAttribute('bottom', '283');
+          tblElem.appendChild(outMargin);
+
+          const inMargin = doc.createElement('hp:inMargin');
+          inMargin.setAttribute('left', '510');
+          inMargin.setAttribute('right', '510');
+          inMargin.setAttribute('top', '141');
+          inMargin.setAttribute('bottom', '141');
+          tblElem.appendChild(inMargin);
+
+          for (let r = 0; r < rowCount; r++) {
+            const rowData = Array.isArray(table.rows[r]) ? table.rows[r] : [];
             const trElem = doc.createElement('hp:tr');
-            for (const cellText of rowData) {
+            for (let c = 0; c < colCount; c++) {
+              const cellText = c < rowData.length ? String(rowData[c] ?? '') : '';
+              const isHeader = r === 0;
               const tcElem = doc.createElement('hp:tc');
+              tcElem.setAttribute('name', '');
+              tcElem.setAttribute('header', isHeader ? '1' : '0');
+              tcElem.setAttribute('hasMargin', '0');
+              tcElem.setAttribute('protect', '0');
+              tcElem.setAttribute('editable', '0');
+              tcElem.setAttribute('dirty', '0');
+              tcElem.setAttribute('borderFillIDRef', isHeader ? headerBorderFillId : bodyBorderFillId);
+
+              const subList = doc.createElement('hp:subList');
+              subList.setAttribute('id', '');
+              subList.setAttribute('textDirection', 'HORIZONTAL');
+              subList.setAttribute('lineWrap', 'BREAK');
+              subList.setAttribute('vertAlign', 'CENTER');
+              subList.setAttribute('linkListIDRef', '0');
+              subList.setAttribute('linkListNextIDRef', '0');
+              subList.setAttribute('textWidth', '0');
+              subList.setAttribute('textHeight', '0');
+              subList.setAttribute('hasTextRef', '0');
+              subList.setAttribute('hasNumRef', '0');
+
               const cellP = doc.createElement('hp:p');
+              cellP.setAttribute('id', String(nextPId++));
+              cellP.setAttribute('paraPrIDRef', '0');
+              cellP.setAttribute('styleIDRef', '0');
+              cellP.setAttribute('pageBreak', '0');
+              cellP.setAttribute('columnBreak', '0');
+              cellP.setAttribute('merged', '0');
+
               const run = doc.createElement('hp:run');
+              run.setAttribute('charPrIDRef', '0');
               const t = doc.createElement('hp:t');
-              t.textContent = String(cellText);
+              t.textContent = cellText;
               run.appendChild(t);
               cellP.appendChild(run);
-              tcElem.appendChild(cellP);
+              subList.appendChild(cellP);
+              tcElem.appendChild(subList);
+
+              const cellAddr = doc.createElement('hp:cellAddr');
+              cellAddr.setAttribute('colAddr', String(c));
+              cellAddr.setAttribute('rowAddr', String(r));
+              tcElem.appendChild(cellAddr);
+
+              const cellSpan = doc.createElement('hp:cellSpan');
+              cellSpan.setAttribute('colSpan', '1');
+              cellSpan.setAttribute('rowSpan', '1');
+              tcElem.appendChild(cellSpan);
+
+              const cellSz = doc.createElement('hp:cellSz');
+              cellSz.setAttribute('width', String(colWidths[c]));
+              cellSz.setAttribute('height', String(rowHeight));
+              tcElem.appendChild(cellSz);
+
+              const cellMargin = doc.createElement('hp:cellMargin');
+              cellMargin.setAttribute('left', '510');
+              cellMargin.setAttribute('right', '510');
+              cellMargin.setAttribute('top', '141');
+              cellMargin.setAttribute('bottom', '141');
+              tcElem.appendChild(cellMargin);
+
               trElem.appendChild(tcElem);
             }
             tblElem.appendChild(trElem);
           }
-          secElem.appendChild(tblElem);
+
+          tblWrapperRun.appendChild(tblElem);
+          tblWrapperP.appendChild(tblWrapperRun);
+          secElem.appendChild(tblWrapperP);
         }
 
         const serializer = new XMLSerializer();
         const newXml = serializer.serializeToString(doc);
         zipData[secEntry] = strToU8(newXml);
 
-        const outZip = zipSync(zipData);
+        const outZip = packHwpxZip(zipData);
         fs.writeFileSync(outPath, Buffer.from(outZip));
         const stats = fs.statSync(outPath);
 
@@ -1415,19 +1855,20 @@ export class HanulMcpServer {
                 const fId = begin.getAttribute('id') || begin.getAttribute('hp:id') || '';
                 const fType = begin.getAttribute('type') || begin.getAttribute('hp:type') || '';
 
-                // 누름틀 시작부터 끝까지 텍스트 수집
-                let collectedText = '';
-                let curr: any = begin.parentNode;
-                while (curr && curr.nodeName !== 'hp:p' && curr.nodeName !== 'p') {
-                  curr = curr.parentNode;
+                // GAP-HWPX-04: 누름틀 fieldBegin ~ fieldEnd 구간 내부 <hp:t>만 정밀 수집
+                let scopeRoot: any = begin.parentNode;
+                while (
+                  scopeRoot &&
+                  scopeRoot.parentNode &&
+                  scopeRoot.nodeName !== 'hp:subList' &&
+                  scopeRoot.nodeName !== 'subList' &&
+                  scopeRoot.nodeName !== 'hs:sec' &&
+                  scopeRoot.nodeName !== 'sec'
+                ) {
+                  scopeRoot = scopeRoot.parentNode;
                 }
-
-                if (curr) {
-                  const tNodes = Array.from(curr.getElementsByTagName('hp:t')).concat(
-                    Array.from(curr.getElementsByTagName('t'))
-                  );
-                  collectedText = tNodes.map((n: any) => n.textContent || '').join(' ').trim();
-                }
+                const { tNodes } = collectFieldTextRange(scopeRoot || doc.documentElement, begin);
+                const collectedText = tNodes.map((n: any) => n.textContent || '').join('').trim();
 
                 if (fName) {
                   fields.push({
@@ -1441,17 +1882,80 @@ export class HanulMcpServer {
             }
           }
         } else {
-          // HWP 5.x 누름틀 태그 추출
+          // HWP 5.x 누름틀 태그 추출 (GAP-HWPX-06: header.flags.compressed 압축 해제 및 CTRL_HEADER 파싱)
           const cfb = new CompoundFile(buf);
-          const entries = cfb.listEntries().filter((e) => e.path.toLowerCase().startsWith('bodytext/section'));
+          const headerStream = cfb.getStream('FileHeader');
+          const header = headerStream ? parseFileHeader(headerStream) : null;
+          const isCompressed = header ? header.flags.compressed : false;
+          const allEntries = cfb.listEntries();
+          const hasViewText = allEntries.some((e) => /^viewtext\/section\d+$/i.test(e.path));
+          const entries = allEntries.filter((e) =>
+            hasViewText
+              ? /^viewtext\/section\d+$/i.test(e.path)
+              : /^bodytext\/section\d+$/i.test(e.path)
+          );
+
           for (const ent of entries) {
-            const rawStream = cfb.getStream(ent.path);
+            const rawStream = cfb.getStream(ent);
             if (!rawStream) continue;
-            // 누름틀 마커 검색
-            const textStr = rawStream.toString('utf16le');
-            const matches = textStr.matchAll(/field:([^\x00-\x1f\s]+)/g);
-            for (const m of matches) {
-              fields.push({ name: m[1], text: '' });
+
+            let sectionStream: Buffer = rawStream;
+            if (ent.path.toLowerCase().startsWith('viewtext/')) {
+              sectionStream = decryptViewTextStream(sectionStream);
+            } else if (isCompressed) {
+              sectionStream = Buffer.from(decompressStream(sectionStream));
+            }
+
+            // 1. HWP 5.x 레코드 체인에서 %clk (누름틀) CTRL_HEADER 추출
+            const records = parseRecords(sectionStream);
+            for (let rIdx = 0; rIdx < records.length; rIdx++) {
+              const rec = records[rIdx];
+              if (rec.tagId === HWP_TAG.CTRL_HEADER && rec.data.length >= 11) {
+                const ctrlId = Buffer.from(rec.data.subarray(0, 4)).reverse().toString('ascii');
+                if (ctrlId === '%clk') {
+                  const cmdLen = rec.data.readUInt16LE(9);
+                  const cmdByteEnd = 11 + cmdLen * 2;
+                  let parsedName = '';
+                  if (cmdByteEnd <= rec.data.length) {
+                    const cmdStr = rec.data.subarray(11, cmdByteEnd).toString('utf16le').replace(/\0.*$/, '');
+                    // id(4 bytes) 뒤에 별도 fieldName(uint16 len + WCHAR[])이 있으면 우선 사용
+                    const nameLenOffset = cmdByteEnd + 4;
+                    if (nameLenOffset + 2 <= rec.data.length) {
+                      const nameLen = rec.data.readUInt16LE(nameLenOffset);
+                      const nameByteEnd = nameLenOffset + 2 + nameLen * 2;
+                      if (nameLen > 0 && nameByteEnd <= rec.data.length) {
+                        parsedName = rec.data
+                          .subarray(nameLenOffset + 2, nameByteEnd)
+                          .toString('utf16le')
+                          .replace(/\0.*$/, '')
+                          .trim();
+                      }
+                    }
+                    if (!parsedName && cmdStr) {
+                      parsedName = cmdStr.split(':')[0].trim();
+                    }
+                  }
+                  let fieldText = '';
+                  if (rIdx + 1 < records.length && records[rIdx + 1].tagId === HWP_TAG.PARA_TEXT) {
+                    fieldText = cleanParaText(records[rIdx + 1].data).trim();
+                  }
+                  if (parsedName && !fields.some((f) => f.name === parsedName)) {
+                    fields.push({ name: parsedName, text: fieldText, type: 'CLICK_HERE' });
+                  }
+                }
+              }
+            }
+
+            // 2. 누름틀 텍스트 마커(field:<name>) 호환 검색 (짝수/홀수 오프셋 UTF-16LE 모두 검사)
+            for (const byteOffset of [0, 1]) {
+              if (sectionStream.length <= byteOffset + 2) continue;
+              const textStr = sectionStream.subarray(byteOffset).toString('utf16le');
+              const matches = textStr.matchAll(/field:([^\x00-\x1f\s]+)/g);
+              for (const m of matches) {
+                if (m[1] && !fields.some((f) => f.name === m[1])) {
+                  fields.push({ name: m[1], text: '' });
+                }
+              }
             }
           }
         }
@@ -1492,31 +1996,75 @@ export class HanulMcpServer {
               const fName = begin.getAttribute('name') || begin.getAttribute('hp:name') || '';
               if (fName && fillData[fName] !== undefined) {
                 const newVal = String(fillData[fName]);
-                // 부모 p 노드 찾기
+
+                // GAP-HWPX-04: 부모 <hp:p> 전체의 형제 <hp:t>를 건드리지 않고 fieldBegin ~ fieldEnd 내부만 교체
                 let pNode: any = begin.parentNode;
                 while (pNode && pNode.nodeName !== 'hp:p' && pNode.nodeName !== 'p') {
                   pNode = pNode.parentNode;
                 }
+                let scopeRoot: any = pNode || begin.parentNode;
+                while (
+                  scopeRoot &&
+                  scopeRoot.parentNode &&
+                  scopeRoot.nodeName !== 'hp:subList' &&
+                  scopeRoot.nodeName !== 'subList' &&
+                  scopeRoot.nodeName !== 'hs:sec' &&
+                  scopeRoot.nodeName !== 'sec'
+                ) {
+                  scopeRoot = scopeRoot.parentNode;
+                }
 
-                if (pNode) {
-                  const tNodes = Array.from(pNode.getElementsByTagName('hp:t')).concat(
-                    Array.from(pNode.getElementsByTagName('t'))
-                  );
-                  if (tNodes.length > 0) {
-                    (tNodes[0] as any).textContent = newVal;
-                    for (let i = 1; i < tNodes.length; i++) {
-                      (tNodes[i] as any).textContent = '';
+                const { tNodes, endNode } = collectFieldTextRange(
+                  scopeRoot || doc.documentElement,
+                  begin
+                );
+
+                if (tNodes.length > 0) {
+                  (tNodes[0] as any).textContent = newVal;
+                  for (let i = 1; i < tNodes.length; i++) {
+                    (tNodes[i] as any).textContent = '';
+                  }
+                } else {
+                  let beginRun: any = begin.parentNode;
+                  let beginDirectInRun: any = begin;
+                  while (
+                    beginRun &&
+                    beginRun.nodeName !== 'hp:run' &&
+                    beginRun.nodeName !== 'run'
+                  ) {
+                    beginDirectInRun = beginRun;
+                    beginRun = beginRun.parentNode;
+                  }
+
+                  const newT = doc.createElement('hp:t');
+                  newT.textContent = newVal;
+
+                  if (beginRun && begin.parentNode === beginRun) {
+                    beginRun.insertBefore(newT, begin.nextSibling);
+                  } else if (beginRun) {
+                    // endNode가 동일 run 내부에 있으면 beginDirectInRun 바로 뒤에 <hp:t> 삽입, 아니면 다음 형제 <hp:run> 삽입
+                    let endRun: any = endNode ? endNode.parentNode : null;
+                    while (endRun && endRun.nodeName !== 'hp:run' && endRun.nodeName !== 'run') {
+                      endRun = endRun.parentNode;
                     }
-                  } else {
+                    if (endRun === beginRun) {
+                      beginRun.insertBefore(newT, beginDirectInRun.nextSibling);
+                    } else if (beginRun.parentNode) {
+                      const newRun = doc.createElement('hp:run');
+                      const charPrRef = beginRun.getAttribute?.('charPrIDRef');
+                      if (charPrRef) newRun.setAttribute('charPrIDRef', charPrRef);
+                      newRun.appendChild(newT);
+                      beginRun.parentNode.insertBefore(newRun, beginRun.nextSibling);
+                    }
+                  } else if (pNode) {
                     const newRun = doc.createElement('hp:run');
-                    const newT = doc.createElement('hp:t');
-                    newT.textContent = newVal;
                     newRun.appendChild(newT);
                     pNode.appendChild(newRun);
                   }
-                  filledCount++;
-                  if (!filledKeys.includes(fName)) filledKeys.push(fName);
                 }
+
+                filledCount++;
+                if (!filledKeys.includes(fName)) filledKeys.push(fName);
               }
             }
 
@@ -1525,7 +2073,7 @@ export class HanulMcpServer {
           }
         }
 
-        const outZip = zipSync(zipData);
+        const outZip = packHwpxZip(zipData);
         fs.writeFileSync(outPath, Buffer.from(outZip));
         const stats = fs.statSync(outPath);
 
